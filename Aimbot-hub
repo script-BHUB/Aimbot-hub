@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
 
 local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -9,10 +10,13 @@ local fovRadius = 150
 local smoothSpeed = 0.1
 local targetPartName = "Head"
 local isAimbotEnabled = false
+local useTeamCheck = false
+local useWallCheck = false
+
 local renderConnection = nil
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AimbotMenuUI"
+screenGui.Name = "UltimateAimbotUI"
 screenGui.ResetOnSpawn = false
 
 if syn and syn.protect_gui then
@@ -26,12 +30,12 @@ end
 
 local openCloseButton = Instance.new("TextButton")
 openCloseButton.Name = "OpenCloseButton"
-openCloseButton.Size = UDim2.new(0, 100, 0, 35)
+openCloseButton.Size = UDim2.new(0, 110, 0, 35) -- ขยายปุ่มเปิด/ปิดหลักเล็กน้อย
 openCloseButton.Position = UDim2.new(0, 10, 0, 10)
 openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 openCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 openCloseButton.TextSize = 14
-openCloseButton.Text = "Menu: ON"
+openCloseButton.Text = "B hub: ON"
 openCloseButton.Font = Enum.Font.SourceSansBold
 openCloseButton.Parent = screenGui
 
@@ -39,10 +43,11 @@ local openCloseCorner = Instance.new("UICorner")
 openCloseCorner.CornerRadius = UDim.new(0, 6)
 openCloseCorner.Parent = openCloseButton
 
+-- ปรับขนาดแผงเมนูให้ใหญ่ขึ้น (กว้าง 260 / สูง 300) เพื่อให้ฟังก์ชันใหญ่ขึ้นเต็มตา
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 220, 0, 300)
-mainPanel.Position = UDim2.new(0.5, -110, 0.5, -150)
+mainPanel.Size = UDim2.new(0, 260, 0, 300)
+mainPanel.Position = UDim2.new(0, 10, 0.48, -150)
 mainPanel.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
 mainPanel.BackgroundTransparency = 0.05
 mainPanel.Active = true
@@ -58,87 +63,112 @@ panelStroke.Color = Color3.fromRGB(220, 220, 220)
 panelStroke.Thickness = 1.5
 panelStroke.Parent = mainPanel
 
-local toggleButton = Instance.new("TextButton")
-toggleButton.Name = "ToggleButton"
-toggleButton.Size = UDim2.new(0, 180, 0, 40)
-toggleButton.Position = UDim2.new(0.5, -90, 0, 15)
-toggleButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
-toggleButton.TextSize = 16
-toggleButton.Text = "Aimbot: OFF"
-toggleButton.Font = Enum.Font.SourceSansBold
-toggleButton.Parent = mainPanel
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -20, 0, 25)
+titleLabel.Position = UDim2.new(0, 10, 0, 6)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
+titleLabel.TextSize = 18 -- ปรับขนาดตัวอักษรหัวข้อใหญ่ขึ้น
+titleLabel.Text = "B hub"
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+titleLabel.Parent = mainPanel
 
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 8)
-toggleCorner.Parent = toggleButton
+local function createMenuButton(name, text, yPos)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Size = UDim2.new(1, -20, 0, 32) -- ขยายความสูงปุ่มขึ้นเพื่อให้กดง่ายขึ้น
+	btn.Position = UDim2.new(0, 10, 0, yPos)
+	btn.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+	btn.TextColor3 = Color3.fromRGB(50, 50, 50)
+	btn.TextSize = 14 -- ตัวอักษรปุ่มใหญ่ขึ้น
+	btn.Text = text
+	btn.Font = Enum.Font.SourceSansBold
+	btn.Parent = mainPanel
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = btn
+	return btn
+end
 
-local partButton = Instance.new("TextButton")
-partButton.Name = "PartButton"
-partButton.Size = UDim2.new(0, 180, 0, 40)
-partButton.Position = UDim2.new(0.5, -90, 0, 65)
-partButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-partButton.TextColor3 = Color3.fromRGB(50, 50, 50)
-partButton.TextSize = 16
-partButton.Text = "Target: head"
-partButton.Font = Enum.Font.SourceSansBold
-partButton.Parent = mainPanel
+local toggleButton = createMenuButton("ToggleButton", "Aimbot: OFF", 36)
 
-local partCorner = Instance.new("UICorner")
-partCorner.CornerRadius = UDim.new(0, 8)
-partCorner.Parent = partButton
+local function createSlider(name, labelText, minVal, maxVal, defaultVal, yPos, callback)
+	local sliderFrame = Instance.new("Frame")
+	sliderFrame.Name = name .. "Frame"
+	sliderFrame.Size = UDim2.new(1, -20, 0, 38)
+	sliderFrame.Position = UDim2.new(0, 10, 0, yPos)
+	sliderFrame.BackgroundTransparency = 1
+	sliderFrame.Parent = mainPanel
 
-local fovLabel = Instance.new("TextLabel")
-fovLabel.Name = "FovLabel"
-fovLabel.Size = UDim2.new(0, 180, 0, 20)
-fovLabel.Position = UDim2.new(0.5, -90, 0, 120)
-fovLabel.BackgroundTransparency = 1
-fovLabel.TextColor3 = Color3.fromRGB(80, 80, 80)
-fovLabel.TextSize = 14
-fovLabel.Text = "FOV Radius: 150"
-fovLabel.Font = Enum.Font.SourceSans
-fovLabel.Parent = mainPanel
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 15)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(80, 80, 80)
+	label.TextSize = 13 -- ขนาดอักษรแถบปรับค่าใหญ่ขึ้น
+	label.Text = labelText .. ": " .. tostring(defaultVal)
+	label.Font = Enum.Font.SourceSans
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = sliderFrame
 
-local fovSlider = Instance.new("TextBox")
-fovSlider.Name = "FovSlider"
-fovSlider.Size = UDim2.new(0, 180, 0, 30)
-fovSlider.Position = UDim2.new(0.5, -90, 0, 145)
-fovSlider.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-fovSlider.TextColor3 = Color3.fromRGB(30, 30, 30)
-fovSlider.TextSize = 14
-fovSlider.Text = "150"
-fovSlider.Font = Enum.Font.SourceSans
-fovSlider.Parent = mainPanel
+	local track = Instance.new("Frame")
+	track.Size = UDim2.new(1, 0, 0, 4)
+	track.Position = UDim2.new(0, 0, 0, 22)
+	track.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+	track.Parent = sliderFrame
+	
+	local trackCorner = Instance.new("UICorner")
+	trackCorner.CornerRadius = UDim.new(1, 0)
+	trackCorner.Parent = track
 
-local fovSliderCorner = Instance.new("UICorner")
-fovSliderCorner.CornerRadius = UDim.new(0, 6)
-fovSliderCorner.Parent = fovSlider
+	local knob = Instance.new("TextButton")
+	knob.Size = UDim2.new(0, 14, 0, 14) -- ขยายปุ่มเลื่อนสไลเดอร์ให้จับง่ายขึ้น
+	knob.AnchorPoint = Vector2.new(0.5, 0.5)
+	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 0.5, 0)
+	knob.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+	knob.Text = ""
+	knob.Parent = track
 
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Name = "SpeedLabel"
-speedLabel.Size = UDim2.new(0, 180, 0, 20)
-speedLabel.Position = UDim2.new(0.5, -90, 0, 190)
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.fromRGB(80, 80, 80)
-speedLabel.TextSize = 14
-speedLabel.Text = "Smooth Speed: 0.1"
-speedLabel.Font = Enum.Font.SourceSans
-speedLabel.Parent = mainPanel
+	local knobCorner = Instance.new("UICorner")
+	knobCorner.CornerRadius = UDim.new(1, 0)
+	knobCorner.Parent = knob
 
-local speedSlider = Instance.new("TextBox")
-speedSlider.Name = "SpeedSlider"
-speedSlider.Size = UDim2.new(0, 180, 0, 30)
-speedSlider.Position = UDim2.new(0.5, -90, 0, 215)
-speedSlider.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-speedSlider.TextColor3 = Color3.fromRGB(30, 30, 30)
-speedSlider.TextSize = 14
-speedSlider.Text = "0.1"
-speedSlider.Font = Enum.Font.SourceSans
-speedSlider.Parent = mainPanel
+	local dragging = false
 
-local speedSliderCorner = Instance.new("UICorner")
-speedSliderCorner.CornerRadius = UDim.new(0, 6)
-speedSliderCorner.Parent = speedSlider
+	local function updateSlider(input)
+		local relativeX = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+		knob.Position = UDim2.new(relativeX, 0, 0.5, 0)
+		local value = minVal + (relativeX * (maxVal - minVal))
+		
+		if maxVal <= 1 then
+			value = math.round(value * 100) / 100
+		else
+			value = math.round(value)
+		end
+		
+		label.Text = labelText .. ": " .. tostring(value)
+		callback(value)
+	end
+
+	knob.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			updateSlider(input)
+		end
+	end)
+end
 
 local fovCircle = Instance.new("Frame")
 fovCircle.Name = "FOVCircle"
@@ -146,10 +176,11 @@ fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
 fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
 fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
 fovCircle.BackgroundTransparency = 1
+fovCircle.Visible = false
 fovCircle.Parent = screenGui
 
 local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = Color3.fromRGB(180, 180, 180)
+fovStroke.Color = Color3.fromRGB(70, 160, 70)
 fovStroke.Thickness = 1
 fovStroke.Transparency = 0.5
 fovStroke.Parent = fovCircle
@@ -158,20 +189,41 @@ local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
 
+-- จัดตำแหน่ง Y ให้สมดุลกับขนาดเมนูที่ใหญ่ขึ้น
+createSlider("FOV", "FOV Radius", 10, 500, fovRadius, 74, function(val)
+	fovRadius = val
+	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+end)
+
+createSlider("Speed", "Smooth Speed", 0.01, 1, smoothSpeed, 118, function(val)
+	smoothSpeed = val
+end)
+
+local partButton = createMenuButton("PartButton", "Target: head", 162)
+local teamButton = createMenuButton("TeamButton", "Team Check: OFF", 200)
+local wallButton = createMenuButton("WallButton", "Wall Check: OFF", 238)
+
 local function findCustomHead(model)
 	local head = model:FindFirstChild("Head") or model:FindFirstChild("head")
 	if head and head:IsA("BasePart") then return head end
-	
 	for _, child in ipairs(model:GetDescendants()) do
 		if child:IsA("BasePart") and (string.lower(child.Name) == "head" or string.find(string.lower(child.Name), "head")) then
 			return child
 		end
 	end
-	
-	local fakeHead = model:FindFirstChild("FakeHead") or model:FindFirstChild("Fake_Head")
-	if fakeHead and fakeHead:IsA("BasePart") then return fakeHead end
-	
 	return model:FindFirstChild("HumanoidRootPart")
+end
+
+local function isVisible(targetPart, character)
+	local origin = camera.CFrame.Position
+	local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParams.FilterDescendantsInstances = {localPlayer.Character, character, camera}
+	raycastParams.IgnoreWater = true
+	
+	local result = workspace:Raycast(origin, direction, raycastParams)
+	return result == nil
 end
 
 local function getClosestTargetInFOV()
@@ -182,7 +234,9 @@ local function getClosestTargetInFOV()
 	local shortestDistance = fovRadius
 	local centerScreen = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-	local function checkValidTarget(object)
+	local function checkValidTarget(object, playerOwner)
+		if useTeamCheck and playerOwner and playerOwner.Team == localPlayer.Team then return end
+		
 		if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
 			local targetPart = nil
 			if targetPartName == "Head" then
@@ -192,8 +246,9 @@ local function getClosestTargetInFOV()
 			end
 			
 			if targetPart then
-				local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+				if useWallCheck and not isVisible(targetPart, object) then return end
 				
+				local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
 				if onScreen then
 					local distanceToCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
 					if distanceToCenter < shortestDistance then
@@ -207,13 +262,13 @@ local function getClosestTargetInFOV()
 
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= localPlayer and player.Character then
-			checkValidTarget(player.Character)
+			checkValidTarget(player.Character, player)
 		end
 	end
 
 	for _, object in ipairs(workspace:GetChildren()) do
-		if object:IsA("Model") and object ~= character then
-			checkValidTarget(object)
+		if object:IsA("Model") and object ~= character and not Players:GetPlayerFromCharacter(object) then
+			checkValidTarget(object, nil)
 		end
 	end
 
@@ -231,24 +286,66 @@ local function updateAimbot()
 	end
 end
 
+local function updateESP()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character then
+			local char = player.Character
+			local highlight = char:FindFirstChild("ESPHighlight")
+			if isAimbotEnabled then
+				if useTeamCheck and player.Team == localPlayer.Team then
+					if highlight then highlight:Destroy() end
+				else
+					if not highlight then
+						highlight = Instance.new("Highlight")
+						highlight.Name = "ESPHighlight"
+						highlight.FillColor = Color3.fromRGB(255, 50, 50)
+						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+						highlight.FillTransparency = 0.5
+						highlight.OutlineTransparency = 0
+						highlight.Adornee = char
+						highlight.Parent = char
+					end
+				end
+			else
+				if highlight then highlight:Destroy() end
+			end
+		end
+	end
+	
+	for _, object in ipairs(workspace:GetChildren()) do
+		if object:IsA("Model") and object:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(object) then
+			local highlight = object:FindFirstChild("ESPHighlight")
+			if isAimbotEnabled then
+				if not highlight then
+					highlight = Instance.new("Highlight")
+					highlight.Name = "ESPHighlight"
+					highlight.FillColor = Color3.fromRGB(255, 150, 0)
+					highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+					highlight.FillTransparency = 0.5
+					highlight.OutlineTransparency = 0
+					highlight.Adornee = object
+					highlight.Parent = object
+				end
+			else
+				if highlight then highlight:Destroy() end
+			end
+		end
+	end
+end
+
 local function toggleAimbot()
+	isAimbotEnabled = not isAimbotEnabled
 	if isAimbotEnabled then
+		toggleButton.Text = "Aimbot: ON"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		fovCircle.Visible = true
+	else
 		isAimbotEnabled = false
 		toggleButton.Text = "Aimbot: OFF"
 		toggleButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
 		toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
-		fovStroke.Color = Color3.fromRGB(180, 180, 180)
-		if renderConnection then
-			renderConnection:Disconnect()
-			renderConnection = nil
-		end
-	else
-		isAimbotEnabled = true
-		toggleButton.Text = "Aimbot: ON"
-		toggleButton.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
-		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		fovStroke.Color = Color3.fromRGB(70, 160, 70)
-		renderConnection = RunService.RenderStepped:Connect(updateAimbot)
+		fovCircle.Visible = false
 	end
 end
 
@@ -262,44 +359,46 @@ local function togglePart()
 	end
 end
 
-local function toggleMenu()
-	if mainPanel.Visible then
-		mainPanel.Visible = false
-		openCloseButton.Text = "Menu: OFF"
-		openCloseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+local function toggleButtonState(btn, stateVar, textOn, textOff)
+	if stateVar then
+		btn.Text = textOn
+		btn.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	else
-		mainPanel.Visible = true
-		openCloseButton.Text = "Menu: ON"
-		openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+		btn.Text = textOff
+		btn.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+		btn.TextColor3 = Color3.fromRGB(50, 50, 50)
 	end
 end
 
-fovSlider.FocusLost:Connect(function(enterPressed)
-	local value = tonumber(fovSlider.Text)
-	if value then
-		fovRadius = math.clamp(value, 10, 500)
-		fovSlider.Text = tostring(fovRadius)
-		fovLabel.Text = "FOV Radius: " .. tostring(fovRadius)
-		fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
-	else
-		fovSlider.Text = tostring(fovRadius)
-	end
-end)
-
-speedSlider.FocusLost:Connect(function(enterPressed)
-	local value = tonumber(speedSlider.Text)
-	if value then
-		smoothSpeed = math.clamp(value, 0.01, 1)
-		speedSlider.Text = tostring(smoothSpeed)
-		speedLabel.Text = "Smooth Speed: " .. tostring(smoothSpeed)
-	else
-		speedSlider.Text = tostring(smoothSpeed)
-	end
-end)
-
 toggleButton.MouseButton1Click:Connect(toggleAimbot)
 partButton.MouseButton1Click:Connect(togglePart)
-openCloseButton.MouseButton1Click:Connect(toggleMenu)
+
+teamButton.MouseButton1Click:Connect(function()
+	useTeamCheck = not useTeamCheck
+	toggleButtonState(teamButton, useTeamCheck, "Team Check: ON", "Team Check: OFF")
+end)
+
+wallButton.MouseButton1Click:Connect(function()
+	useWallCheck = not useWallCheck
+	toggleButtonState(wallButton, useWallCheck, "Wall Check: ON", "Wall Check: OFF")
+end)
+
+openCloseButton.MouseButton1Click:Connect(function()
+	mainPanel.Visible = not mainPanel.Visible
+	if mainPanel.Visible then
+		openCloseButton.Text = "B hub: ON"
+		openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	else
+		openCloseButton.Text = "B hub: OFF"
+		openCloseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	end
+end)
+
+renderConnection = RunService.RenderStepped:Connect(function()
+	updateAimbot()
+	updateESP()
+end)
 
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
 	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
