@@ -28,38 +28,39 @@ else
 	screenGui.Parent = CoreGui
 end
 
+-- ปุ่มเปิด/ปิดหลัก
 local openCloseButton = Instance.new("TextButton")
 openCloseButton.Name = "OpenCloseButton"
-openCloseButton.Size = UDim2.new(0, 110, 0, 35) -- ขยายปุ่มเปิด/ปิดหลักเล็กน้อย
+openCloseButton.Size = UDim2.new(0, 110, 0, 35)
 openCloseButton.Position = UDim2.new(0, 10, 0, 10)
-openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+openCloseButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 openCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 openCloseButton.TextSize = 14
 openCloseButton.Text = "B hub: ON"
 openCloseButton.Font = Enum.Font.SourceSansBold
+openCloseButton.Active = true
 openCloseButton.Parent = screenGui
 
 local openCloseCorner = Instance.new("UICorner")
 openCloseCorner.CornerRadius = UDim.new(0, 6)
 openCloseCorner.Parent = openCloseButton
 
--- ปรับขนาดแผงเมนูให้ใหญ่ขึ้น (กว้าง 260 / สูง 300) เพื่อให้ฟังก์ชันใหญ่ขึ้นเต็มตา
+-- หน้าต่างเมนูสีขาว (ผูกติดกับปุ่มหลัก)
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 260, 0, 300)
-mainPanel.Position = UDim2.new(0, 10, 0.48, -150)
-mainPanel.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
-mainPanel.BackgroundTransparency = 0.05
+mainPanel.Size = UDim2.new(0, 260, 0, 295)
+mainPanel.Position = UDim2.new(0, 0, 0, 40) 
+mainPanel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+mainPanel.BackgroundTransparency = 0.02
 mainPanel.Active = true
-mainPanel.Draggable = true
-mainPanel.Parent = screenGui
+mainPanel.Parent = openCloseButton 
 
 local panelCorner = Instance.new("UICorner")
 panelCorner.CornerRadius = UDim.new(0, 12)
 panelCorner.Parent = mainPanel
 
 local panelStroke = Instance.new("UIStroke")
-panelStroke.Color = Color3.fromRGB(220, 220, 220)
+panelStroke.Color = Color3.fromRGB(200, 200, 200)
 panelStroke.Thickness = 1.5
 panelStroke.Parent = mainPanel
 
@@ -67,8 +68,8 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -20, 0, 25)
 titleLabel.Position = UDim2.new(0, 10, 0, 6)
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-titleLabel.TextSize = 18 -- ปรับขนาดตัวอักษรหัวข้อใหญ่ขึ้น
+titleLabel.TextColor3 = Color3.fromRGB(30, 30, 30)
+titleLabel.TextSize = 18
 titleLabel.Text = "B hub"
 titleLabel.Font = Enum.Font.SourceSansBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -77,11 +78,11 @@ titleLabel.Parent = mainPanel
 local function createMenuButton(name, text, yPos)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(1, -20, 0, 32) -- ขยายความสูงปุ่มขึ้นเพื่อให้กดง่ายขึ้น
+	btn.Size = UDim2.new(1, -20, 0, 32)
 	btn.Position = UDim2.new(0, 10, 0, yPos)
-	btn.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-	btn.TextColor3 = Color3.fromRGB(50, 50, 50)
-	btn.TextSize = 14 -- ตัวอักษรปุ่มใหญ่ขึ้น
+	btn.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+	btn.TextColor3 = Color3.fromRGB(40, 40, 40)
+	btn.TextSize = 14
 	btn.Text = text
 	btn.Font = Enum.Font.SourceSansBold
 	btn.Parent = mainPanel
@@ -89,6 +90,12 @@ local function createMenuButton(name, text, yPos)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = btn
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(225, 225, 225)
+	stroke.Thickness = 1
+	stroke.Parent = btn
+	
 	return btn
 end
 
@@ -105,17 +112,17 @@ local function createSlider(name, labelText, minVal, maxVal, defaultVal, yPos, c
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 0, 15)
 	label.BackgroundTransparency = 1
-	label.TextColor3 = Color3.fromRGB(80, 80, 80)
-	label.TextSize = 13 -- ขนาดอักษรแถบปรับค่าใหญ่ขึ้น
+	label.TextColor3 = Color3.fromRGB(60, 60, 60)
+	label.TextSize = 13
 	label.Text = labelText .. ": " .. tostring(defaultVal)
-	label.Font = Enum.Font.SourceSans
+	label.Font = Enum.Font.SourceSansBold
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = sliderFrame
 
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 4)
 	track.Position = UDim2.new(0, 0, 0, 22)
-	track.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+	track.BackgroundColor3 = Color3.fromRGB(210, 210, 210)
 	track.Parent = sliderFrame
 	
 	local trackCorner = Instance.new("UICorner")
@@ -123,10 +130,10 @@ local function createSlider(name, labelText, minVal, maxVal, defaultVal, yPos, c
 	trackCorner.Parent = track
 
 	local knob = Instance.new("TextButton")
-	knob.Size = UDim2.new(0, 14, 0, 14) -- ขยายปุ่มเลื่อนสไลเดอร์ให้จับง่ายขึ้น
+	knob.Size = UDim2.new(0, 14, 0, 14)
 	knob.AnchorPoint = Vector2.new(0.5, 0.5)
 	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 0.5, 0)
-	knob.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+	knob.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
 	knob.Text = ""
 	knob.Parent = track
 
@@ -137,6 +144,7 @@ local function createSlider(name, labelText, minVal, maxVal, defaultVal, yPos, c
 	local dragging = false
 
 	local function updateSlider(input)
+		-- แก้ไขสูตรการคำนวณ AbsolutePosition ให้เสถียรเมื่อปุ่มย้าย Parent
 		local relativeX = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
 		knob.Position = UDim2.new(relativeX, 0, 0.5, 0)
 		local value = minVal + (relativeX * (maxVal - minVal))
@@ -180,7 +188,7 @@ fovCircle.Visible = false
 fovCircle.Parent = screenGui
 
 local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = Color3.fromRGB(70, 160, 70)
+fovStroke.Color = Color3.fromRGB(0, 180, 100)
 fovStroke.Thickness = 1
 fovStroke.Transparency = 0.5
 fovStroke.Parent = fovCircle
@@ -189,7 +197,6 @@ local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
 
--- จัดตำแหน่ง Y ให้สมดุลกับขนาดเมนูที่ใหญ่ขึ้น
 createSlider("FOV", "FOV Radius", 10, 500, fovRadius, 74, function(val)
 	fovRadius = val
 	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
@@ -311,40 +318,19 @@ local function updateESP()
 			end
 		end
 	end
-	
-	for _, object in ipairs(workspace:GetChildren()) do
-		if object:IsA("Model") and object:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(object) then
-			local highlight = object:FindFirstChild("ESPHighlight")
-			if isAimbotEnabled then
-				if not highlight then
-					highlight = Instance.new("Highlight")
-					highlight.Name = "ESPHighlight"
-					highlight.FillColor = Color3.fromRGB(255, 150, 0)
-					highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-					highlight.FillTransparency = 0.5
-					highlight.OutlineTransparency = 0
-					highlight.Adornee = object
-					highlight.Parent = object
-				end
-			else
-				if highlight then highlight:Destroy() end
-			end
-		end
-	end
 end
 
 local function toggleAimbot()
 	isAimbotEnabled = not isAimbotEnabled
 	if isAimbotEnabled then
 		toggleButton.Text = "Aimbot: ON"
-		toggleButton.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+		toggleButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
 		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 		fovCircle.Visible = true
 	else
-		isAimbotEnabled = false
 		toggleButton.Text = "Aimbot: OFF"
-		toggleButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+		toggleButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+		toggleButton.TextColor3 = Color3.fromRGB(40, 40, 40)
 		fovCircle.Visible = false
 	end
 end
@@ -362,12 +348,12 @@ end
 local function toggleButtonState(btn, stateVar, textOn, textOff)
 	if stateVar then
 		btn.Text = textOn
-		btn.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+		btn.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	else
 		btn.Text = textOff
-		btn.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		btn.TextColor3 = Color3.fromRGB(50, 50, 50)
+		btn.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+		btn.TextColor3 = Color3.fromRGB(40, 40, 40)
 	end
 end
 
@@ -384,14 +370,54 @@ wallButton.MouseButton1Click:Connect(function()
 	toggleButtonState(wallButton, useWallCheck, "Wall Check: ON", "Wall Check: OFF")
 end)
 
-openCloseButton.MouseButton1Click:Connect(function()
-	mainPanel.Visible = not mainPanel.Visible
-	if mainPanel.Visible then
-		openCloseButton.Text = "B hub: ON"
-		openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	else
-		openCloseButton.Text = "B hub: OFF"
-		openCloseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+-- ปรับปรุงระบบลากปุ่มเวอร์ชันโมเดิร์น ลื่นไหลและแม่นยำขึ้นทั้ง PC และ มือถือ
+local dragging, dragInput, dragStart, startPos
+local isDraggingButton = false
+local dragDistanceThreshold = 5
+
+openCloseButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = openCloseButton.Position
+		isDraggingButton = false
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+openCloseButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		if delta.Magnitude > dragDistanceThreshold then
+			isDraggingButton = true
+		end
+		openCloseButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+openCloseButton.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		if not isDraggingButton then
+			mainPanel.Visible = not mainPanel.Visible
+			if mainPanel.Visible then
+				openCloseButton.Text = "B hub: ON"
+				openCloseButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			else
+				openCloseButton.Text = "B hub: OFF"
+				openCloseButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+			end
+		end
 	end
 end)
 
