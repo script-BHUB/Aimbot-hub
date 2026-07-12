@@ -158,6 +158,22 @@ local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
 
+local function findCustomHead(model)
+	local head = model:FindFirstChild("Head") or model:FindFirstChild("head")
+	if head and head:IsA("BasePart") then return head end
+	
+	for _, child in ipairs(model:GetDescendants()) do
+		if child:IsA("BasePart") and (string.lower(child.Name) == "head" or string.find(string.lower(child.Name), "head")) then
+			return child
+		end
+	end
+	
+	local fakeHead = model:FindFirstChild("FakeHead") or model:FindFirstChild("Fake_Head")
+	if fakeHead and fakeHead:IsA("BasePart") then return fakeHead end
+	
+	return model:FindFirstChild("HumanoidRootPart")
+end
+
 local function getClosestTargetInFOV()
 	local character = localPlayer.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
@@ -168,7 +184,13 @@ local function getClosestTargetInFOV()
 
 	local function checkValidTarget(object)
 		if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
-			local targetPart = object:FindFirstChild(targetPartName) or object:FindFirstChild("HumanoidRootPart")
+			local targetPart = nil
+			if targetPartName == "Head" then
+				targetPart = findCustomHead(object)
+			else
+				targetPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChild("Torso") or object:FindFirstChild("UpperTorso")
+			end
+			
 			if targetPart then
 				local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
 				
