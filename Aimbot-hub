@@ -1,0 +1,284 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local fovRadius = 150
+local smoothSpeed = 0.1
+local targetPartName = "Head"
+local isAimbotEnabled = false
+local renderConnection = nil
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AimbotMenuUI"
+screenGui.ResetOnSpawn = false
+
+if syn and syn.protect_gui then
+	syn.protect_gui(screenGui)
+	screenGui.Parent = CoreGui
+elseif getgui then
+	screenGui.Parent = getgui()
+else
+	screenGui.Parent = CoreGui
+end
+
+local openCloseButton = Instance.new("TextButton")
+openCloseButton.Name = "OpenCloseButton"
+openCloseButton.Size = UDim2.new(0, 100, 0, 35)
+openCloseButton.Position = UDim2.new(0, 10, 0, 10)
+openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+openCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+openCloseButton.TextSize = 14
+openCloseButton.Text = "Menu: ON"
+openCloseButton.Font = Enum.Font.SourceSansBold
+openCloseButton.Parent = screenGui
+
+local openCloseCorner = Instance.new("UICorner")
+openCloseCorner.CornerRadius = UDim.new(0, 6)
+openCloseCorner.Parent = openCloseButton
+
+local mainPanel = Instance.new("Frame")
+mainPanel.Name = "MainPanel"
+mainPanel.Size = UDim2.new(0, 220, 0, 300)
+mainPanel.Position = UDim2.new(0.5, -110, 0.5, -150)
+mainPanel.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
+mainPanel.BackgroundTransparency = 0.05
+mainPanel.Active = true
+mainPanel.Draggable = true
+mainPanel.Parent = screenGui
+
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 12)
+panelCorner.Parent = mainPanel
+
+local panelStroke = Instance.new("UIStroke")
+panelStroke.Color = Color3.fromRGB(220, 220, 220)
+panelStroke.Thickness = 1.5
+panelStroke.Parent = mainPanel
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 180, 0, 40)
+toggleButton.Position = UDim2.new(0.5, -90, 0, 15)
+toggleButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.TextSize = 16
+toggleButton.Text = "Aimbot: OFF"
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.Parent = mainPanel
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 8)
+toggleCorner.Parent = toggleButton
+
+local partButton = Instance.new("TextButton")
+partButton.Name = "PartButton"
+partButton.Size = UDim2.new(0, 180, 0, 40)
+partButton.Position = UDim2.new(0.5, -90, 0, 65)
+partButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+partButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+partButton.TextSize = 16
+partButton.Text = "Target: head"
+partButton.Font = Enum.Font.SourceSansBold
+partButton.Parent = mainPanel
+
+local partCorner = Instance.new("UICorner")
+partCorner.CornerRadius = UDim.new(0, 8)
+partCorner.Parent = partButton
+
+local fovLabel = Instance.new("TextLabel")
+fovLabel.Name = "FovLabel"
+fovLabel.Size = UDim2.new(0, 180, 0, 20)
+fovLabel.Position = UDim2.new(0.5, -90, 0, 120)
+fovLabel.BackgroundTransparency = 1
+fovLabel.TextColor3 = Color3.fromRGB(80, 80, 80)
+fovLabel.TextSize = 14
+fovLabel.Text = "FOV Radius: 150"
+fovLabel.Font = Enum.Font.SourceSans
+fovLabel.Parent = mainPanel
+
+local fovSlider = Instance.new("TextBox")
+fovSlider.Name = "FovSlider"
+fovSlider.Size = UDim2.new(0, 180, 0, 30)
+fovSlider.Position = UDim2.new(0.5, -90, 0, 145)
+fovSlider.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+fovSlider.TextColor3 = Color3.fromRGB(30, 30, 30)
+fovSlider.TextSize = 14
+fovSlider.Text = "150"
+fovSlider.Font = Enum.Font.SourceSans
+fovSlider.Parent = mainPanel
+
+local fovSliderCorner = Instance.new("UICorner")
+fovSliderCorner.CornerRadius = UDim.new(0, 6)
+fovSliderCorner.Parent = fovSlider
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(0, 180, 0, 20)
+speedLabel.Position = UDim2.new(0.5, -90, 0, 190)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(80, 80, 80)
+speedLabel.TextSize = 14
+speedLabel.Text = "Smooth Speed: 0.1"
+speedLabel.Font = Enum.Font.SourceSans
+speedLabel.Parent = mainPanel
+
+local speedSlider = Instance.new("TextBox")
+speedSlider.Name = "SpeedSlider"
+speedSlider.Size = UDim2.new(0, 180, 0, 30)
+speedSlider.Position = UDim2.new(0.5, -90, 0, 215)
+speedSlider.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+speedSlider.TextColor3 = Color3.fromRGB(30, 30, 30)
+speedSlider.TextSize = 14
+speedSlider.Text = "0.1"
+speedSlider.Font = Enum.Font.SourceSans
+speedSlider.Parent = mainPanel
+
+local speedSliderCorner = Instance.new("UICorner")
+speedSliderCorner.CornerRadius = UDim.new(0, 6)
+speedSliderCorner.Parent = speedSlider
+
+local fovCircle = Instance.new("Frame")
+fovCircle.Name = "FOVCircle"
+fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+fovCircle.BackgroundTransparency = 1
+fovCircle.Parent = screenGui
+
+local fovStroke = Instance.new("UIStroke")
+fovStroke.Color = Color3.fromRGB(180, 180, 180)
+fovStroke.Thickness = 1
+fovStroke.Transparency = 0.5
+fovStroke.Parent = fovCircle
+
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fovCircle
+
+local function getClosestTargetInFOV()
+	local character = localPlayer.Character
+	if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+	local closestTarget = nil
+	local shortestDistance = fovRadius
+	local centerScreen = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+	local function checkValidTarget(object)
+		if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
+			local targetPart = object:FindFirstChild(targetPartName) or object:FindFirstChild("HumanoidRootPart")
+			if targetPart then
+				local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+				
+				if onScreen then
+					local distanceToCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+					if distanceToCenter < shortestDistance then
+						shortestDistance = distanceToCenter
+						closestTarget = targetPart
+					end
+				end
+			end
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character then
+			checkValidTarget(player.Character)
+		end
+	end
+
+	for _, object in ipairs(workspace:GetChildren()) do
+		if object:IsA("Model") and object ~= character then
+			checkValidTarget(object)
+		end
+	end
+
+	return closestTarget
+end
+
+local function updateAimbot()
+	if not isAimbotEnabled then return end
+	
+	local targetPart = getClosestTargetInFOV()
+	if targetPart then
+		local currentCFrame = camera.CFrame
+		local targetCFrame = CFrame.new(currentCFrame.Position, targetPart.Position)
+		camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothSpeed)
+	end
+end
+
+local function toggleAimbot()
+	if isAimbotEnabled then
+		isAimbotEnabled = false
+		toggleButton.Text = "Aimbot: OFF"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+		toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+		fovStroke.Color = Color3.fromRGB(180, 180, 180)
+		if renderConnection then
+			renderConnection:Disconnect()
+			renderConnection = nil
+		end
+	else
+		isAimbotEnabled = true
+		toggleButton.Text = "Aimbot: ON"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(70, 160, 70)
+		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		fovStroke.Color = Color3.fromRGB(70, 160, 70)
+		renderConnection = RunService.RenderStepped:Connect(updateAimbot)
+	end
+end
+
+local function togglePart()
+	if targetPartName == "Head" then
+		targetPartName = "HumanoidRootPart"
+		partButton.Text = "Target: body"
+	else
+		targetPartName = "Head"
+		partButton.Text = "Target: head"
+	end
+end
+
+local function toggleMenu()
+	if mainPanel.Visible then
+		mainPanel.Visible = false
+		openCloseButton.Text = "Menu: OFF"
+		openCloseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	else
+		mainPanel.Visible = true
+		openCloseButton.Text = "Menu: ON"
+		openCloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	end
+end
+
+fovSlider.FocusLost:Connect(function(enterPressed)
+	local value = tonumber(fovSlider.Text)
+	if value then
+		fovRadius = math.clamp(value, 10, 500)
+		fovSlider.Text = tostring(fovRadius)
+		fovLabel.Text = "FOV Radius: " .. tostring(fovRadius)
+		fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+	else
+		fovSlider.Text = tostring(fovRadius)
+	end
+end)
+
+speedSlider.FocusLost:Connect(function(enterPressed)
+	local value = tonumber(speedSlider.Text)
+	if value then
+		smoothSpeed = math.clamp(value, 0.01, 1)
+		speedSlider.Text = tostring(smoothSpeed)
+		speedLabel.Text = "Smooth Speed: " .. tostring(smoothSpeed)
+	else
+		speedSlider.Text = tostring(smoothSpeed)
+	end
+end)
+
+toggleButton.MouseButton1Click:Connect(toggleAimbot)
+partButton.MouseButton1Click:Connect(togglePart)
+openCloseButton.MouseButton1Click:Connect(toggleMenu)
+
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+end)
