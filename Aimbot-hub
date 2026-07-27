@@ -7,13 +7,16 @@ local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 local fovRadius = 150
+local fovYOffset = -30
 local smoothSpeed = 0.1
 local targetPartName = "Head"
 local isAimbotEnabled = false
+local isKeybindEnabled = false
+local isQuickAimVisible = false
 local useTeamCheck = false
 local useWallCheck = false
 
-local renderConnection = nil
+local aimbotKey = Enum.KeyCode.E
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "UltimateAimbotUI"
@@ -28,13 +31,12 @@ else
 	screenGui.Parent = CoreGui
 end
 
--- ปุ่มเปิด/ปิดหลัก
 local openCloseButton = Instance.new("TextButton")
 openCloseButton.Name = "OpenCloseButton"
-openCloseButton.Size = UDim2.new(0, 110, 0, 35)
+openCloseButton.Size = UDim2.new(0, 110, 0, 36)
 openCloseButton.Position = UDim2.new(0, 10, 0, 10)
-openCloseButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-openCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+openCloseButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+openCloseButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 openCloseButton.TextSize = 14
 openCloseButton.Text = "B hub: ON"
 openCloseButton.Font = Enum.Font.SourceSansBold
@@ -42,34 +44,63 @@ openCloseButton.Active = true
 openCloseButton.Parent = screenGui
 
 local openCloseCorner = Instance.new("UICorner")
-openCloseCorner.CornerRadius = UDim.new(0, 6)
+openCloseCorner.CornerRadius = UDim.new(0, 8)
 openCloseCorner.Parent = openCloseButton
 
--- หน้าต่างเมนูสีขาว (ผูกติดกับปุ่มหลัก)
+local openCloseStroke = Instance.new("UIStroke")
+openCloseStroke.Color = Color3.fromRGB(0, 180, 100)
+openCloseStroke.Thickness = 1.5
+openCloseStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+openCloseStroke.Parent = openCloseButton
+
+local quickAimButton = Instance.new("TextButton")
+quickAimButton.Name = "QuickAimButton"
+quickAimButton.Size = UDim2.new(0, 75, 0, 75)
+quickAimButton.Position = UDim2.new(1, -90, 0, 10)
+quickAimButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+quickAimButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+quickAimButton.TextSize = 13
+quickAimButton.Text = "Aim: OFF"
+quickAimButton.Font = Enum.Font.SourceSansBold
+quickAimButton.Active = true
+quickAimButton.Visible = false
+quickAimButton.Parent = screenGui
+
+local quickAimCorner = Instance.new("UICorner")
+quickAimCorner.CornerRadius = UDim.new(1, 0)
+quickAimCorner.Parent = quickAimButton
+
+local quickAimStroke = Instance.new("UIStroke")
+quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
+quickAimStroke.Thickness = 2
+quickAimStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+quickAimStroke.Parent = quickAimButton
+
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 260, 0, 295)
-mainPanel.Position = UDim2.new(0, 0, 0, 40) 
+mainPanel.Size = UDim2.new(0, 230, 0, 260)
+mainPanel.Position = UDim2.new(0, 0, 0, 42) 
 mainPanel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainPanel.BackgroundTransparency = 0.02
 mainPanel.Active = true
 mainPanel.Parent = openCloseButton 
 
 local panelCorner = Instance.new("UICorner")
-panelCorner.CornerRadius = UDim.new(0, 12)
+panelCorner.CornerRadius = UDim.new(0, 10)
 panelCorner.Parent = mainPanel
 
 local panelStroke = Instance.new("UIStroke")
 panelStroke.Color = Color3.fromRGB(200, 200, 200)
 panelStroke.Thickness = 1.5
+panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 panelStroke.Parent = mainPanel
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -20, 0, 25)
-titleLabel.Position = UDim2.new(0, 10, 0, 6)
+titleLabel.Size = UDim2.new(1, -16, 0, 20)
+titleLabel.Position = UDim2.new(0, 8, 0, 5)
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(30, 30, 30)
-titleLabel.TextSize = 18
+titleLabel.TextSize = 15
 titleLabel.Text = "B hub"
 titleLabel.Font = Enum.Font.SourceSansBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -78,75 +109,76 @@ titleLabel.Parent = mainPanel
 local function createMenuButton(name, text, yPos)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(1, -20, 0, 32)
-	btn.Position = UDim2.new(0, 10, 0, yPos)
+	btn.Size = UDim2.new(1, -16, 0, 24)
+	btn.Position = UDim2.new(0, 8, 0, yPos)
 	btn.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 	btn.TextColor3 = Color3.fromRGB(40, 40, 40)
-	btn.TextSize = 14
+	btn.TextSize = 12
 	btn.Text = text
 	btn.Font = Enum.Font.SourceSansBold
 	btn.Parent = mainPanel
 	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
+	corner.CornerRadius = UDim.new(0, 5)
 	corner.Parent = btn
 	
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(225, 225, 225)
 	stroke.Thickness = 1
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = btn
 	
 	return btn
 end
 
-local toggleButton = createMenuButton("ToggleButton", "Aimbot: OFF", 36)
+local keybindButton = createMenuButton("KeybindButton", "Aimbot key [" .. aimbotKey.Name .. "]: OFF", 28)
+local snowAimbotButton = createMenuButton("SnowAimbotButton", "Snow Aimbot: OFF", 54)
 
 local function createSlider(name, labelText, minVal, maxVal, defaultVal, yPos, callback)
 	local sliderFrame = Instance.new("Frame")
 	sliderFrame.Name = name .. "Frame"
-	sliderFrame.Size = UDim2.new(1, -20, 0, 38)
-	sliderFrame.Position = UDim2.new(0, 10, 0, yPos)
+	sliderFrame.Size = UDim2.new(1, -16, 0, 30)
+	sliderFrame.Position = UDim2.new(0, 8, 0, yPos)
 	sliderFrame.BackgroundTransparency = 1
 	sliderFrame.Parent = mainPanel
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 15)
+	label.Size = UDim2.new(1, 0, 0, 12)
 	label.BackgroundTransparency = 1
 	label.TextColor3 = Color3.fromRGB(60, 60, 60)
-	label.TextSize = 13
+	label.TextSize = 11
 	label.Text = labelText .. ": " .. tostring(defaultVal)
 	label.Font = Enum.Font.SourceSansBold
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = sliderFrame
 
-	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 4)
-	track.Position = UDim2.new(0, 0, 0, 22)
-	track.BackgroundColor3 = Color3.fromRGB(210, 210, 210)
-	track.Parent = sliderFrame
+	local sTrack = Instance.new("Frame")
+	sTrack.Size = UDim2.new(1, 0, 0, 4)
+	sTrack.Position = UDim2.new(0, 0, 0, 17)
+	sTrack.BackgroundColor3 = Color3.fromRGB(210, 210, 210)
+	sTrack.Parent = sliderFrame
 	
-	local trackCorner = Instance.new("UICorner")
-	trackCorner.CornerRadius = UDim.new(1, 0)
-	trackCorner.Parent = track
+	local sTrackCorner = Instance.new("UICorner")
+	sTrackCorner.CornerRadius = UDim.new(1, 0)
+	sTrackCorner.Parent = sTrack
 
-	local knob = Instance.new("TextButton")
-	knob.Size = UDim2.new(0, 14, 0, 14)
-	knob.AnchorPoint = Vector2.new(0.5, 0.5)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 0.5, 0)
-	knob.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
-	knob.Text = ""
-	knob.Parent = track
+	local sKnob = Instance.new("TextButton")
+	sKnob.Size = UDim2.new(0, 14, 0, 14)
+	sKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+	sKnob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 0.5, 0)
+	sKnob.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+	sKnob.Text = ""
+	sKnob.Parent = sTrack
 
-	local knobCorner = Instance.new("UICorner")
-	knobCorner.CornerRadius = UDim.new(1, 0)
-	knobCorner.Parent = knob
+	local sKnobCorner = Instance.new("UICorner")
+	sKnobCorner.CornerRadius = UDim.new(1, 0)
+	sKnobCorner.Parent = sKnob
 
-	local dragging = false
+	local sDragging = false
 
 	local function updateSlider(input)
-		-- แก้ไขสูตรการคำนวณ AbsolutePosition ให้เสถียรเมื่อปุ่มย้าย Parent
-		local relativeX = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-		knob.Position = UDim2.new(relativeX, 0, 0.5, 0)
+		local relativeX = math.clamp((input.Position.X - sTrack.AbsolutePosition.X) / sTrack.AbsoluteSize.X, 0, 1)
+		sKnob.Position = UDim2.new(relativeX, 0, 0.5, 0)
 		local value = minVal + (relativeX * (maxVal - minVal))
 		
 		if maxVal <= 1 then
@@ -159,20 +191,20 @@ local function createSlider(name, labelText, minVal, maxVal, defaultVal, yPos, c
 		callback(value)
 	end
 
-	knob.InputBegan:Connect(function(input)
+	sKnob.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
+			sDragging = true
 		end
 	end)
 
 	UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = false
+			sDragging = false
 		end
 	end)
 
 	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		if sDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			updateSlider(input)
 		end
 	end)
@@ -182,9 +214,9 @@ local fovCircle = Instance.new("Frame")
 fovCircle.Name = "FOVCircle"
 fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
 fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+fovCircle.Position = UDim2.new(0.5, 0, 0.5, fovYOffset)
 fovCircle.BackgroundTransparency = 1
-fovCircle.Visible = false
+fovCircle.Visible = true
 fovCircle.Parent = screenGui
 
 local fovStroke = Instance.new("UIStroke")
@@ -197,18 +229,20 @@ local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
 
-createSlider("FOV", "FOV Radius", 10, 500, fovRadius, 74, function(val)
+createSlider("FOV", "FOV", 10, 500, fovRadius, 80, function(val)
 	fovRadius = val
-	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+	if fovCircle then
+		fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+	end
 end)
 
-createSlider("Speed", "Smooth Speed", 0.01, 1, smoothSpeed, 118, function(val)
+createSlider("Speed", "Speed", 0.01, 1, smoothSpeed, 112, function(val)
 	smoothSpeed = val
 end)
 
-local partButton = createMenuButton("PartButton", "Target: head", 162)
-local teamButton = createMenuButton("TeamButton", "Team Check: OFF", 200)
-local wallButton = createMenuButton("WallButton", "Wall Check: OFF", 238)
+local partButton = createMenuButton("PartButton", "Target: head", 144)
+local teamButton = createMenuButton("TeamButton", "Team Check: OFF", 186)
+local wallButton = createMenuButton("WallButton", "Wall Check: OFF", 228)
 
 local function findCustomHead(model)
 	local head = model:FindFirstChild("Head") or model:FindFirstChild("head")
@@ -239,7 +273,7 @@ local function getClosestTargetInFOV()
 
 	local closestTarget = nil
 	local shortestDistance = fovRadius
-	local centerScreen = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+	local centerScreen = Vector2.new(camera.ViewportSize.X / 2, (camera.ViewportSize.Y / 2) + fovYOffset)
 
 	local function checkValidTarget(object, playerOwner)
 		if useTeamCheck and playerOwner and playerOwner.Team == localPlayer.Team then return end
@@ -323,15 +357,34 @@ end
 local function toggleAimbot()
 	isAimbotEnabled = not isAimbotEnabled
 	if isAimbotEnabled then
-		toggleButton.Text = "Aimbot: ON"
-		toggleButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
-		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		fovCircle.Visible = true
+		keybindButton.Text = "Aimbot key [" .. aimbotKey.Name .. "]: ON"
+		keybindButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+		keybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		
+		quickAimButton.Text = "Aim: ON"
+		quickAimStroke.Color = Color3.fromRGB(0, 180, 100)
 	else
-		toggleButton.Text = "Aimbot: OFF"
-		toggleButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-		toggleButton.TextColor3 = Color3.fromRGB(40, 40, 40)
-		fovCircle.Visible = false
+		keybindButton.Text = "Aimbot key [" .. aimbotKey.Name .. "]: OFF"
+		keybindButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+		keybindButton.TextColor3 = Color3.fromRGB(40, 40, 40)
+		
+		quickAimButton.Text = "Aim: OFF"
+		quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
+	end
+end
+
+local function toggleKeybindFunction()
+	isKeybindEnabled = not isKeybindEnabled
+	if isKeybindEnabled then
+		snowAimbotButton.Text = "Snow Aimbot: ON"
+		snowAimbotButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+		snowAimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		quickAimButton.Visible = true
+	else
+		snowAimbotButton.Text = "Snow Aimbot: OFF"
+		snowAimbotButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+		snowAimbotButton.TextColor3 = Color3.fromRGB(40, 40, 40)
+		quickAimButton.Visible = false
 	end
 end
 
@@ -357,7 +410,17 @@ local function toggleButtonState(btn, stateVar, textOn, textOff)
 	end
 end
 
-toggleButton.MouseButton1Click:Connect(toggleAimbot)
+keybindButton.MouseButton1Click:Connect(toggleAimbot)
+snowAimbotButton.MouseButton1Click:Connect(toggleKeybindFunction)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == aimbotKey then
+		if isKeybindEnabled then
+			toggleAimbot()
+		end
+	end
+end)
+
 partButton.MouseButton1Click:Connect(togglePart)
 
 teamButton.MouseButton1Click:Connect(function()
@@ -370,58 +433,69 @@ wallButton.MouseButton1Click:Connect(function()
 	toggleButtonState(wallButton, useWallCheck, "Wall Check: ON", "Wall Check: OFF")
 end)
 
--- ปรับปรุงระบบลากปุ่มเวอร์ชันโมเดิร์น ลื่นไหลและแม่นยำขึ้นทั้ง PC และ มือถือ
-local dragging, dragInput, dragStart, startPos
-local isDraggingButton = false
-local dragDistanceThreshold = 5
+local function enableDragging(buttonObject, onSingleClick)
+	local dragging, dragInput, dragStart, startPos
+	local isDragging = false
+	local threshold = 5
 
-openCloseButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = openCloseButton.Position
-		isDraggingButton = false
-		
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
-openCloseButton.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		local delta = input.Position - dragStart
-		if delta.Magnitude > dragDistanceThreshold then
-			isDraggingButton = true
+	buttonObject.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = buttonObject.Position
+			isDragging = false
+			
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
 		end
-		openCloseButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
+	end)
 
-openCloseButton.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		if not isDraggingButton then
-			mainPanel.Visible = not mainPanel.Visible
-			if mainPanel.Visible then
-				openCloseButton.Text = "B hub: ON"
-				openCloseButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-			else
-				openCloseButton.Text = "B hub: OFF"
-				openCloseButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+	buttonObject.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			if delta.Magnitude > threshold then
+				isDragging = true
+			end
+			buttonObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	buttonObject.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if not isDragging and onSingleClick then
+				onSingleClick()
 			end
 		end
+	end)
+end
+
+enableDragging(openCloseButton, function()
+	mainPanel.Visible = not mainPanel.Visible
+	if mainPanel.Visible then
+		openCloseButton.Text = "B hub: ON"
+		openCloseButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+		openCloseStroke.Color = Color3.fromRGB(0, 180, 100)
+	else
+		openCloseButton.Text = "B hub: OFF"
+		openCloseButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+		openCloseStroke.Color = Color3.fromRGB(200, 200, 200)
 	end
 end)
 
-renderConnection = RunService.RenderStepped:Connect(function()
+enableDragging(quickAimButton, function()
+	toggleAimbot()
+end)
+
+RunService.RenderStepped:Connect(function()
 	updateAimbot()
 	updateESP()
 end)
