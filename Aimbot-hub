@@ -1,158 +1,171 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "B hub",
-    LoadingTitle = "B hub Loading...",
-    LoadingSubtitle = "by Snow",
-    ConfigurationSaving = {Enabled = false},
-    Discord = {Enabled = false},
-    KeySystem = false
+	Name = "B hub",
+	LoadingTitle = "B hub Loading...",
+	LoadingSubtitle = "by Snow",
+	ConfigurationSaving = {
+		Enabled = false,
+		FolderName = nil,
+		FileName = "B hub"
+	},
+	Discord = {
+		Enabled = false,
+		Invite = "noinvite",
+		RememberJoins = true
+	},
+	KeySystem = false,
+	KeySettings = {
+		Title = "B hub",
+		Subtitle = "Key System",
+		Note = "No key required",
+		FileName = "Key",
+		SaveKey = true,
+		GrabKeyFromSite = false,
+		Key = {"1234"}
+	}
 })
 
 local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483345998)
-local BoostFpsTab = Window:CreateTab("Boost fps", 4483362458)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
 
 local localPlayer = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
-local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
 
+-- ==========================================
 -- Variables
-local fovRadius, fovYOffset, smoothSpeed = 150, -30, 0.1
+-- ==========================================
+local fovRadius = 150
+local fovYOffset = -30
+local smoothSpeed = 0.1
 local targetPartName = "Head"
-local isAimbotEnabled, isKeybindEnabled, isFovVisible = false, false, true
-local useTeamCheck, useWallCheck = false, false
+local isAimbotEnabled = false
+local isKeybindEnabled = false
+local isFovVisible = true -- สถานะการแสดงผลวงกลม FOV
+local useTeamCheck = false
+local useWallCheck = false
 
-local defaultWalkSpeed, defaultJumpPower = 16, 50
-local isSpeedEnabled, isJumpEnabled = false, false
-local customWalkSpeed, customJumpPower = 16, 50
+local defaultWalkSpeed = 16
+local defaultJumpPower = 50
+local isSpeedEnabled = false
+local isJumpEnabled = false
+local customWalkSpeed = 16
+local customJumpPower = 50
+
 local isInfJumpEnabled = false
-
-local isFlyEnabled, flySpeed = false, 50
-local bodyVelocity, bodyGyro, flyConnection = nil, nil, nil
-
 local isNoclipEnabled = false
+local isGodModeEnabled = false
+
 local noclipConnection = nil
+local godModeConnection = nil
 
 local aimbotKey = Enum.KeyCode.E
 
--- Color Correction
-local ColorEffect = Lighting:FindFirstChild("BHubColorCorrection") or Instance.new("ColorCorrectionEffect")
-ColorEffect.Name = "BHubColorCorrection"
-ColorEffect.Parent = Lighting
-ColorEffect.Enabled = true
+-- Fly Variables
+local isFlyEnabled = false
+local flySpeed = 50
+local bodyVelocity = nil
+local bodyGyro = nil
+local flyHeartbeatConnection = nil
 
 -- ==========================================
--- Compact Low Graphics & Texture Remover (Boost fps)
+-- Fly Functions (ใช้ระบบที่นายแก้ + Heartbeat ลดกระตุก)
 -- ==========================================
-local function applyBoostFps(enable)
-    pcall(function()
-        Lighting.GlobalShadows = not enable
-        Lighting.FogEnd = enable and 9e9 or 1000
+local function startFlying(character)
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	
+	if not humanoidRootPart or not humanoid then return end
+	
+	humanoid.PlatformStand = true
+	humanoid.AutoRotate = false
+	
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.Name = "FlyVelocity"
+	bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 10^6
+	bodyVelocity.Velocity = Vector3.zero
+	bodyVelocity.Parent = humanoidRootPart
+	
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.Name = "FlyGyro"
+	bodyGyro.MaxTorque = Vector3.new(1, 1, 1) * 10^6
+	bodyGyro.P = 10000
+	bodyGyro.CFrame = camera.CFrame
+	bodyGyro.Parent = humanoidRootPart
 
-        -- ปิดเอฟเฟกต์แสงสว่างใน Lighting
-        for _, v in ipairs(Lighting:GetChildren()) do
-            if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("Atmosphere") then
-                if v.Name ~= "BHubColorCorrection" then
-                    v.Enabled = not enable
-                end
-            end
-        end
-
-        -- ปรับผิวน้ำ Terrain
-        local terrain = Workspace:FindFirstChildOfClass("Terrain")
-        if terrain then
-            terrain.WaterWaveSize = enable and 0 or 0.15
-            terrain.WaterWaveSpeed = enable and 0 or 10
-            terrain.WaterReflectance = enable and 0 or 1
-            terrain.WaterTransparency = enable and 0 or 1
-        end
-
-        -- Low Graphics: เปลี่ยนพื้นผิว + ลบ Texture / Particles
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                if enable then
-                    obj.Material = Enum.Material.SmoothPlastic
-                    obj.CastShadow = false
-                end
-            elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                if enable then obj.Transparency = 1 end
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-                if enable then obj.Enabled = false end
-            end
-        end
-    end)
+	-- รันบน Heartbeat เพื่อลดอาการ Frame Drop / กระตุก
+	flyHeartbeatConnection = RunService.Heartbeat:Connect(function()
+		if not isFlyEnabled then return end
+		
+		local char = localPlayer.Character
+		if not char then return end
+		
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hrp or not hum or not bodyVelocity or not bodyGyro then return end
+		
+		bodyGyro.CFrame = camera.CFrame
+		
+		local moveDir = hum.MoveDirection
+		
+		if moveDir.Magnitude > 0 then
+			local camCFrame = camera.CFrame
+			local lookVector = camCFrame.LookVector
+			local rightVector = camCFrame.RightVector
+			
+			local flatLook = Vector3.new(lookVector.X, 0, lookVector.Z)
+			if flatLook.Magnitude > 0 then
+				flatLook = flatLook.Unit
+			end
+			
+			local flatRight = Vector3.new(rightVector.X, 0, rightVector.Z)
+			if flatRight.Magnitude > 0 then
+				flatRight = flatRight.Unit
+			end
+			
+			local forwardInput = moveDir:Dot(flatLook)
+			local rightInput = moveDir:Dot(flatRight)
+			
+			local flyVector = (lookVector * forwardInput) + (rightVector * rightInput)
+			
+			if flyVector.Magnitude > 0 then
+				flyVector = flyVector.Unit
+			end
+			
+			bodyVelocity.Velocity = flyVector * flySpeed
+		else
+			bodyVelocity.Velocity = Vector3.zero
+		end
+	end)
 end
 
--- ==========================================
--- Snow FPS & PING ScreenGui
--- ==========================================
-local statGui = Instance.new("ScreenGui")
-statGui.Name = "SnowFpsPingGui"
-statGui.ResetOnSpawn = false
-statGui.Parent = parentGui
+local function stopFlying(character)
+	if flyHeartbeatConnection then
+		flyHeartbeatConnection:Disconnect()
+		flyHeartbeatConnection = nil
+	end
 
-local StatLabel = Instance.new("TextLabel")
-StatLabel.Name = "SnowStatLabel"
-StatLabel.Parent = statGui
-StatLabel.BackgroundTransparency = 0.2
-StatLabel.BackgroundColor3 = Color3.fromRGB(18, 20, 24)
-StatLabel.AnchorPoint = Vector2.new(0.5, 0)
-StatLabel.Position = UDim2.new(0.5, 0, 0, 15)
-StatLabel.Size = UDim2.new(0, 200, 0, 28)
-StatLabel.Font = Enum.Font.GothamBold
-StatLabel.TextColor3 = Color3.fromRGB(215, 220, 230)
-StatLabel.TextSize = 11
-StatLabel.Text = "FPS: -- | PING: --ms"
-StatLabel.Visible = false
-StatLabel.ZIndex = 10
-
-Instance.new("UICorner", StatLabel).CornerRadius = UDim.new(0, 8)
-local statStroke = Instance.new("UIStroke", StatLabel)
-statStroke.Color = Color3.fromRGB(55, 62, 75)
-statStroke.Thickness = 1.2
-
--- Dragging StatLabel
-local dragStart, startPos = nil, nil
-StatLabel.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragStart = input.Position
-        startPos = StatLabel.Position
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragStart and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        StatLabel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-StatLabel.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragStart = nil
-    end
-end)
-
--- Update FPS & Ping Loop
-task.spawn(function()
-    local lastTime, frameCount = os.clock(), 0
-    RunService.Heartbeat:Connect(function()
-        frameCount = frameCount + 1
-        local cT = os.clock()
-        if cT - lastTime >= 1.0 then
-            local fps = math.floor(frameCount / (cT - lastTime))
-            frameCount, lastTime = 0, cT
-            local ping = 0
-            pcall(function() ping = math.floor(localPlayer:GetNetworkPing() * 1000) end)
-            StatLabel.Text = "FPS: " .. fps .. " | PING: " .. ping .. "ms"
-        end
-    end)
-end)
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = false
+		humanoid.AutoRotate = true
+	end
+	
+	if bodyVelocity then
+		bodyVelocity:Destroy()
+		bodyVelocity = nil
+	end
+	
+	if bodyGyro then
+		bodyGyro:Destroy()
+		bodyGyro = nil
+	end
+end
 
 -- ==========================================
 -- UI Setup (QuickAim & FOV Circle)
@@ -160,9 +173,10 @@ end)
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "UltimateAimbotUI"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = parentGui
+screenGui.Parent = game:GetService("CoreGui")
 
 local quickAimButton = Instance.new("TextButton")
+quickAimButton.Name = "QuickAimButton"
 quickAimButton.Size = UDim2.new(0, 75, 0, 75)
 quickAimButton.Position = UDim2.new(1, -90, 0, 10)
 quickAimButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -170,15 +184,22 @@ quickAimButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 quickAimButton.TextSize = 13
 quickAimButton.Text = "Aim: OFF"
 quickAimButton.Font = Enum.Font.SourceSansBold
+quickAimButton.Active = true
 quickAimButton.Visible = false
 quickAimButton.Parent = screenGui
 
-Instance.new("UICorner", quickAimButton).CornerRadius = UDim.new(1, 0)
-local quickAimStroke = Instance.new("UIStroke", quickAimButton)
+local quickAimCorner = Instance.new("UICorner")
+quickAimCorner.CornerRadius = UDim.new(1, 0)
+quickAimCorner.Parent = quickAimButton
+
+local quickAimStroke = Instance.new("UIStroke")
 quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
 quickAimStroke.Thickness = 2
+quickAimStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+quickAimStroke.Parent = quickAimButton
 
 local fovCircle = Instance.new("Frame")
+fovCircle.Name = "FOVCircle"
 fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
 fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
 fovCircle.Position = UDim2.new(0.5, 0, 0.5, fovYOffset)
@@ -186,213 +207,471 @@ fovCircle.BackgroundTransparency = 1
 fovCircle.Visible = isFovVisible
 fovCircle.Parent = screenGui
 
-local fovStroke = Instance.new("UIStroke", fovCircle)
+local fovStroke = Instance.new("UIStroke")
 fovStroke.Color = Color3.fromRGB(0, 180, 100)
 fovStroke.Thickness = 1
 fovStroke.Transparency = 0.5
-Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
+fovStroke.Parent = fovCircle
 
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fovCircle
+
+-- ==========================================
 -- Helper Functions
+-- ==========================================
+local function findCustomHead(model)
+	local head = model:FindFirstChild("Head") or model:FindFirstChild("head")
+	if head and head:IsA("BasePart") then return head end
+	for _, child in ipairs(model:GetDescendants()) do
+		if child:IsA("BasePart") and (string.lower(child.Name) == "head" or string.find(string.lower(child.Name), "head")) then
+			return child
+		end
+	end
+	return model:FindFirstChild("HumanoidRootPart")
+end
+
+local function isVisible(targetPart, character)
+	local origin = camera.CFrame.Position
+	local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParams.FilterDescendantsInstances = {localPlayer.Character, character, camera}
+	raycastParams.IgnoreWater = true
+	
+	local result = Workspace:Raycast(origin, direction, raycastParams)
+	return result == nil
+end
+
+local function getClosestTargetInFOV()
+	local character = localPlayer.Character
+	if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+	local closestTarget = nil
+	local shortestDistance = fovRadius
+	local centerScreen = Vector2.new(camera.ViewportSize.X / 2, (camera.ViewportSize.Y / 2) + fovYOffset)
+
+	local function checkValidTarget(object, playerOwner)
+		if useTeamCheck and playerOwner and playerOwner.Team == localPlayer.Team then return end
+		
+		if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
+			local targetPart = nil
+			if targetPartName == "Head" then
+				targetPart = findCustomHead(object)
+			else
+				targetPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChild("Torso") or object:FindFirstChild("UpperTorso")
+			end
+			
+			if targetPart then
+				if useWallCheck and not isVisible(targetPart, object) then return end
+				
+				local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+				if onScreen then
+					local distanceToCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+					if distanceToCenter < shortestDistance then
+						shortestDistance = distanceToCenter
+						closestTarget = targetPart
+					end
+				end
+			end
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character then
+			checkValidTarget(player.Character, player)
+		end
+	end
+
+	return closestTarget
+end
+
+local function updateAimbot()
+	if not isAimbotEnabled then return end
+	
+	local targetPart = getClosestTargetInFOV()
+	if targetPart then
+		local currentCFrame = camera.CFrame
+		local targetCFrame = CFrame.new(currentCFrame.Position, targetPart.Position)
+		camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothSpeed)
+	end
+end
+
+local function updateESP()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character then
+			local char = player.Character
+			local highlight = char:FindFirstChild("ESPHighlight")
+			
+			if isAimbotEnabled then
+				if useTeamCheck and player.Team == localPlayer.Team then
+					if highlight then highlight.Enabled = false end
+				else
+					if not highlight then
+						highlight = Instance.new("Highlight")
+						highlight.Name = "ESPHighlight"
+						highlight.FillColor = Color3.fromRGB(255, 50, 50)
+						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+						highlight.FillTransparency = 0.5
+						highlight.OutlineTransparency = 0
+						highlight.Adornee = char
+						highlight.Parent = char
+					end
+					highlight.Enabled = true
+				end
+			else
+				if highlight then highlight.Enabled = false end
+			end
+		end
+	end
+end
+
 local function toggleAimbot()
-    isAimbotEnabled = not isAimbotEnabled
-    quickAimButton.Text = isAimbotEnabled and "Aim: ON" or "Aim: OFF"
-    quickAimStroke.Color = isAimbotEnabled and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(200, 200, 200)
-end
-
-local function getClosestTarget()
-    local char = localPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local closest, shortestDist = nil, fovRadius
-    local center = Vector2.new(camera.ViewportSize.X / 2, (camera.ViewportSize.Y / 2) + fovYOffset)
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= localPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            if not (useTeamCheck and p.Team == localPlayer.Team) then
-                local part = p.Character:FindFirstChild(targetPartName) or p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
-                if part then
-                    local pos, onScreen = camera:WorldToViewportPoint(part.Position)
-                    if onScreen then
-                        local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                        if dist < shortestDist then
-                            shortestDist = dist
-                            closest = part
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return closest
+	isAimbotEnabled = not isAimbotEnabled
+	if isAimbotEnabled then
+		quickAimButton.Text = "Aim: ON"
+		quickAimStroke.Color = Color3.fromRGB(0, 180, 100)
+	else
+		quickAimButton.Text = "Aim: OFF"
+		quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
+	end
 end
 
 -- ==========================================
--- Fly Functions
+-- Aimbot Tab Elements
 -- ==========================================
-local function startFlying(char)
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
+AimbotTab:CreateToggle({
+	Name = "Aimbot key [" .. aimbotKey.Name .. "]",
+	CurrentValue = false,
+	Flag = "AimbotKeyToggle",
+	Callback = function(Value)
+		isAimbotEnabled = Value
+		if isAimbotEnabled then
+			quickAimButton.Text = "Aim: ON"
+			quickAimStroke.Color = Color3.fromRGB(0, 180, 100)
+		else
+			quickAimButton.Text = "Aim: OFF"
+			quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
+		end
+	end,
+})
 
-    hum.PlatformStand = true
-    hum.AutoRotate = false
+AimbotTab:CreateToggle({
+	Name = "Snow Aimbot",
+	CurrentValue = false,
+	Flag = "SnowAimbotToggle",
+	Callback = function(Value)
+		isKeybindEnabled = Value
+		quickAimButton.Visible = Value
+	end,
+})
 
-    bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 10^6
-    bodyVelocity.Velocity = Vector3.zero
-    bodyVelocity.Parent = hrp
+-- 🟢 [เพิ่มฟังชั่น Snow FOV เหนือ Slider ความใหญ่ของ FOV]
+AimbotTab:CreateToggle({
+	Name = "Snow FOV",
+	CurrentValue = true,
+	Flag = "SnowFovToggle",
+	Callback = function(Value)
+		isFovVisible = Value
+		if fovCircle then
+			fovCircle.Visible = Value
+		end
+	end,
+})
 
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(1, 1, 1) * 10^6
-    bodyGyro.P = 10000
-    bodyGyro.CFrame = camera.CFrame
-    bodyGyro.Parent = hrp
+AimbotTab:CreateSlider({
+	Name = "FOV",
+	Range = {10, 500},
+	Increment = 1,
+	CurrentValue = fovRadius,
+	Flag = "FOVRadiusSlider",
+	Callback = function(Value)
+		fovRadius = Value
+		if fovCircle then
+			fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+		end
+	end,
+})
 
-    flyConnection = RunService.RenderStepped:Connect(function()
-        if not isFlyEnabled or not bodyVelocity or not bodyGyro then return end
+AimbotTab:CreateSlider({
+	Name = "Speed",
+	Range = {0.01, 1},
+	Increment = 0.01,
+	CurrentValue = smoothSpeed,
+	Flag = "SpeedSlider",
+	Callback = function(Value)
+		smoothSpeed = Value
+	end,
+})
 
-        bodyGyro.CFrame = camera.CFrame
-        local moveDir = hum.MoveDirection
+AimbotTab:CreateDropdown({
+	Name = "Target Part",
+	Options = {"head", "body"},
+	CurrentOption = "head",
+	Flag = "TargetDropdown",
+	Callback = function(Option)
+		if Option == "head" then
+			targetPartName = "Head"
+		else
+			targetPartName = "HumanoidRootPart"
+		end
+	end,
+})
 
-        if moveDir.Magnitude > 0 then
-            local camCFrame = camera.CFrame
-            local lookVector = camCFrame.LookVector
-            local rightVector = camCFrame.RightVector
+AimbotTab:CreateToggle({
+	Name = "Team Check",
+	CurrentValue = false,
+	Flag = "TeamCheckToggle",
+	Callback = function(Value)
+		useTeamCheck = Value
+	end,
+})
 
-            local flatLook = Vector3.new(lookVector.X, 0, lookVector.Z)
-            local flatRight = Vector3.new(rightVector.X, 0, rightVector.Z)
-
-            if flatLook.Magnitude > 0 then flatLook = flatLook.Unit end
-            if flatRight.Magnitude > 0 then flatRight = flatRight.Unit end
-
-            local forwardInput = moveDir:Dot(flatLook)
-            local rightInput = moveDir:Dot(flatRight)
-
-            local flyVector = (lookVector * forwardInput) + (rightVector * rightInput)
-            if flyVector.Magnitude > 0 then
-                flyVector = flyVector.Unit
-            end
-
-            bodyVelocity.Velocity = flyVector * flySpeed
-        else
-            bodyVelocity.Velocity = Vector3.zero
-        end
-    end)
-end
-
-local function stopFlying(char)
-    if flyConnection then
-        flyConnection:Disconnect()
-        flyConnection = nil
-    end
-
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.PlatformStand = false
-        hum.AutoRotate = true
-    end
-
-    if bodyVelocity then
-        bodyVelocity:Destroy()
-        bodyVelocity = nil
-    end
-    if bodyGyro then
-        bodyGyro:Destroy()
-        bodyGyro = nil
-    end
-end
+AimbotTab:CreateToggle({
+	Name = "Wall Check",
+	CurrentValue = false,
+	Flag = "WallCheckToggle",
+	Callback = function(Value)
+		useWallCheck = Value
+	end,
+})
 
 -- ==========================================
--- Noclip Function
+-- Player Tab Elements
 -- ==========================================
-local function toggleNoclip(enable)
-    isNoclipEnabled = enable
-    if enable then
-        noclipConnection = RunService.Stepped:Connect(function()
-            local char = localPlayer.Character
-            if char and isNoclipEnabled then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        if noclipConnection then
-            noclipConnection:Disconnect()
-            noclipConnection = nil
-        end
-    end
-end
+PlayerTab:CreateToggle({
+	Name = "Enable WalkSpeed",
+	CurrentValue = false,
+	Flag = "SpeedToggle",
+	Callback = function(Value)
+		isSpeedEnabled = Value
+	end,
+})
 
--- ==========================================
--- UI Elements Setup
--- ==========================================
--- Aimbot Tab
-AimbotTab:CreateToggle({Name = "Aimbot Key [" .. aimbotKey.Name .. "]", CurrentValue = false, Callback = function(v) isAimbotEnabled = v end})
-AimbotTab:CreateToggle({Name = "Snow Aimbot", CurrentValue = false, Callback = function(v) isKeybindEnabled = v quickAimButton.Visible = v end})
-AimbotTab:CreateToggle({Name = "Snow FOV", CurrentValue = true, Callback = function(v) fovCircle.Visible = v end})
-AimbotTab:CreateSlider({Name = "FOV", Range = {10, 500}, Increment = 1, CurrentValue = 150, Callback = function(v) fovRadius = v fovCircle.Size = UDim2.new(0, v*2, 0, v*2) end})
-AimbotTab:CreateSlider({Name = "Speed", Range = {0.01, 1}, Increment = 0.01, CurrentValue = 0.1, Callback = function(v) smoothSpeed = v end})
-AimbotTab:CreateDropdown({Name = "Target Part", Options = {"Head", "HumanoidRootPart"}, CurrentOption = "Head", Callback = function(v) targetPartName = v end})
-AimbotTab:CreateToggle({Name = "Team Check", CurrentValue = false, Callback = function(v) useTeamCheck = v end})
+PlayerTab:CreateSlider({
+	Name = "WalkSpeed",
+	Range = {16, 200},
+	Increment = 1,
+	CurrentValue = 16,
+	Flag = "WalkSpeedSlider",
+	Callback = function(Value)
+		customWalkSpeed = Value
+	end,
+})
 
--- Player Tab
-PlayerTab:CreateToggle({Name = "Enable WalkSpeed", CurrentValue = false, Callback = function(v) isSpeedEnabled = v end})
-PlayerTab:CreateSlider({Name = "WalkSpeed", Range = {16, 200}, Increment = 1, CurrentValue = 16, Callback = function(v) customWalkSpeed = v end})
-PlayerTab:CreateToggle({Name = "Enable JumpPower", CurrentValue = false, Callback = function(v) isJumpEnabled = v end})
-PlayerTab:CreateSlider({Name = "JumpPower", Range = {50, 300}, Increment = 1, CurrentValue = 50, Callback = function(v) customJumpPower = v end})
-PlayerTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) isInfJumpEnabled = v end})
-PlayerTab:CreateToggle({Name = "Fly", CurrentValue = false, Callback = function(v) 
-    isFlyEnabled = v 
-    local char = localPlayer.Character 
-    if char then 
-        if v then startFlying(char) else stopFlying(char) end 
-    end 
-end})
-PlayerTab:CreateSlider({Name = "Fly Speed", Range = {10, 200}, Increment = 5, CurrentValue = 50, Callback = function(v) flySpeed = v end})
-PlayerTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(v) toggleNoclip(v) end})
+PlayerTab:CreateToggle({
+	Name = "Enable JumpPower",
+	CurrentValue = false,
+	Flag = "JumpToggle",
+	Callback = function(Value)
+		isJumpEnabled = Value
+	end,
+})
 
--- Boost fps Tab
-BoostFpsTab:CreateToggle({Name = "Boost fps", CurrentValue = false, Callback = function(v) applyBoostFps(v) end})
-BoostFpsTab:CreateToggle({Name = "Snow FPS & PING", CurrentValue = false, Callback = function(v) StatLabel.Visible = v end})
-BoostFpsTab:CreateSlider({Name = "Brightness / Darkness", Range = {-100, 100}, Increment = 1, CurrentValue = 0, Callback = function(v)
-    if v > 0 then ColorEffect.Brightness = (v/100)*0.6 ColorEffect.TintColor = Color3.fromRGB(255,255,255)
-    elseif v < 0 then ColorEffect.Brightness = 0 local c = 255 - ((math.abs(v)/100)*200) ColorEffect.TintColor = Color3.fromRGB(c,c,c)
-    else ColorEffect.Brightness = 0 ColorEffect.TintColor = Color3.fromRGB(255,255,255) end
-end})
+PlayerTab:CreateSlider({
+	Name = "JumpPower",
+	Range = {50, 300},
+	Increment = 1,
+	CurrentValue = 50,
+	Flag = "JumpPowerSlider",
+	Callback = function(Value)
+		customJumpPower = Value
+	end,
+})
 
--- Event Connections
+PlayerTab:CreateToggle({
+	Name = "Infinite Jump",
+	CurrentValue = false,
+	Flag = "InfJumpToggle",
+	Callback = function(Value)
+		isInfJumpEnabled = Value
+	end,
+})
+
 UserInputService.JumpRequest:Connect(function()
-    if isInfJumpEnabled and localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
-        localPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
+	if isInfJumpEnabled then
+		local character = localPlayer.Character
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+	end
 end)
 
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == aimbotKey and isKeybindEnabled then toggleAimbot() end
+PlayerTab:CreateToggle({
+	Name = "Fly",
+	CurrentValue = false,
+	Flag = "FlyToggle",
+	Callback = function(Value)
+		isFlyEnabled = Value
+		local character = localPlayer.Character
+		if not character then return end
+		
+		if isFlyEnabled then
+			startFlying(character)
+		else
+			stopFlying(character)
+		end
+	end,
+})
+
+PlayerTab:CreateSlider({
+	Name = "Fly Speed",
+	Range = {10, 200},
+	Increment = 5,
+	CurrentValue = 50,
+	Flag = "FlySpeedSlider",
+	Callback = function(Value)
+		flySpeed = Value
+	end,
+})
+
+PlayerTab:CreateToggle({
+	Name = "Noclip",
+	CurrentValue = false,
+	Flag = "NoclipToggle",
+	Callback = function(Value)
+		isNoclipEnabled = Value
+		if isNoclipEnabled then
+			noclipConnection = RunService.Stepped:Connect(function()
+				local character = localPlayer.Character
+				if character then
+					for _, part in ipairs(character:GetDescendants()) do
+						if part:IsA("BasePart") and part.CanCollide then
+							part.CanCollide = false
+						end
+					end
+				end
+			end)
+		else
+			if noclipConnection then
+				noclipConnection:Disconnect()
+				noclipConnection = nil
+			end
+		end
+	end,
+})
+
+PlayerTab:CreateToggle({
+	Name = "God Mode (With Health Boost)",
+	CurrentValue = false,
+	Flag = "GodModeToggle",
+	Callback = function(Value)
+		isGodModeEnabled = Value
+		local character = localPlayer.Character
+		if isGodModeEnabled then
+			if character and character:FindFirstChild("Humanoid") then
+				local humanoid = character.Humanoid
+				humanoid.MaxHealth = 999999
+				humanoid.Health = 999999
+				
+				godModeConnection = humanoid.HealthChanged:Connect(function()
+					if isGodModeEnabled and humanoid.Health < humanoid.MaxHealth then
+						humanoid.Health = humanoid.MaxHealth
+					end
+				end)
+			end
+		else
+			if godModeConnection then
+				godModeConnection:Disconnect()
+				godModeConnection = nil
+			end
+			if character and character:FindFirstChild("Humanoid") then
+				local humanoid = character.Humanoid
+				humanoid.MaxHealth = 100
+				humanoid.Health = 100
+			end
+		end
+	end,
+})
+
+-- ==========================================
+-- Events & Connections
+-- ==========================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == aimbotKey then
+		if isKeybindEnabled then
+			toggleAimbot()
+		end
+	end
 end)
 
-quickAimButton.MouseButton1Click:Connect(function() toggleAimbot() end)
+local function enableDragging(buttonObject, onSingleClick)
+	local dragging, dragInput, dragStart, startPos
+	local isDragging = false
+	local threshold = 5
+
+	buttonObject.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = buttonObject.Position
+			isDragging = false
+			
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	buttonObject.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			if delta.Magnitude > threshold then
+				isDragging = true
+			end
+			buttonObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	buttonObject.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if not isDragging and onSingleClick then
+				onSingleClick()
+			end
+		end
+	end)
+end
+
+enableDragging(quickAimButton, function()
+	toggleAimbot()
+end)
 
 RunService.RenderStepped:Connect(function()
-    if isAimbotEnabled then
-        local target = getClosestTarget()
-        if target then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, target.Position), smoothSpeed) end
-    end
+	updateAimbot()
+	updateESP()
 end)
 
 RunService.Heartbeat:Connect(function()
-    local char = localPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        local hum = char.Humanoid
-        hum.WalkSpeed = isSpeedEnabled and customWalkSpeed or defaultWalkSpeed
-        hum.JumpPower = isJumpEnabled and customJumpPower or defaultJumpPower
-    end
+	local character = localPlayer.Character
+	if character and character:FindFirstChild("Humanoid") then
+		local humanoid = character.Humanoid
+		if isSpeedEnabled and humanoid.WalkSpeed ~= customWalkSpeed then
+			humanoid.WalkSpeed = customWalkSpeed
+		elseif not isSpeedEnabled and humanoid.WalkSpeed ~= defaultWalkSpeed then
+			humanoid.WalkSpeed = defaultWalkSpeed
+		end
+		
+		if isJumpEnabled and humanoid.JumpPower ~= customJumpPower then
+			humanoid.JumpPower = customJumpPower
+		elseif not isJumpEnabled and humanoid.JumpPower ~= defaultJumpPower then
+			humanoid.JumpPower = defaultJumpPower
+		end
+	end
 end)
 
-localPlayer.CharacterAdded:Connect(function(char)
-    isFlyEnabled = false
-    stopFlying(char)
-    toggleNoclip(false)
+localPlayer.CharacterAdded:Connect(function(character)
+	isFlyEnabled = false
+	stopFlying(character)
+end)
+
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
 end)
