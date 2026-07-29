@@ -325,4 +325,74 @@ local function toggleNoclip(enable)
     end
 end
 
-Aimbot Tab AimbotTab:CreateToggle({Name = "Aimbot Key [" .. aimbotKey.Name .. "]", CurrentValue = false, Callback = function(v) isAimbotEnabled = v end}) AimbotTab:CreateToggle({Name = "Snow Aimbot", CurrentValue = false, Callback = function(v) isKeybindEnabled = v quickAimButton.Visible = v end}) AimbotTab:CreateToggle({Name = "Snow FOV", CurrentValue = true, Callback = function(v) fovCircle.Visible = v end}) AimbotTab:CreateSlider({Name = "FOV", Range = {10, 500}, Increment = 1, CurrentValue = 150, Callback = function(v) fovRadius = v fovCircle.Size = UDim2.new(0, v*2, 0, v*2) end}) AimbotTab:CreateSlider({Name = "Speed", Range = {0.01, 1}, Increment = 0.01, CurrentValue = 0.1, Callback = function(v) smoothSpeed = v end}) AimbotTab:CreateDropdown({Name = "Target Part", Options = {"Head", "HumanoidRootPart"}, CurrentOption = "Head", Callback = function(v) targetPartName = v end}) AimbotTab:CreateToggle({Name = "Team Check", CurrentValue = false, Callback = function(v) useTeamCheck = v end}) PlayerTab:CreateToggle({Name = "Enable WalkSpeed", CurrentValue = false, Callback = function(v) isSpeedEnabled = v end}) PlayerTab:CreateSlider({Name = "WalkSpeed", Range = {16, 200}, Increment = 1, CurrentValue = 16, Callback = function(v) customWalkSpeed = v end}) PlayerTab:CreateToggle({Name = "Enable JumpPower", CurrentValue = false, Callback = function(v) isJumpEnabled = v end}) PlayerTab:CreateSlider({Name = "JumpPower", Range = {50, 300}, Increment = 1, CurrentValue = 50, Callback = function(v) customJumpPower = v end}) PlayerTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) isInfJumpEnabled = v end}) PlayerTab:CreateToggle({Name = "Fly", CurrentValue = false, Callback = function(v) isFlyEnabled = v local char = localPlayer.Character if char then if v then startFlying(char) else stopFlying(char) end end end}) PlayerTab:CreateSlider({Name = "Fly Speed", Range = {10, 200}, Increment = 5, CurrentValue = 50, Callback = function(v) flySpeed = v end}) PlayerTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(v) toggleNoclip(v) end}) BoostFpsTab:CreateToggle({Name = "Boost fps", CurrentValue = false, Callback = function(v) applyBoostFps(v) end}) BoostFpsTab:CreateToggle({Name = "Snow FPS & PING", CurrentValue = false, Callback = function(v) StatLabel.Visible = v end}) BoostFpsTab:CreateSlider({Name = "Brightness / Darkness", Range = {-100, 100}, Increment = 1, CurrentValue = 0, Callback = function(v) if v > 0 then ColorEffect.Brightness = (v/100)*0.6 ColorEffect.TintColor = Color3.fromRGB(255,255,255) elseif v < 0 then ColorEffect.Brightness = 0 local c = 255 - ((math.abs(v)/100)*200) ColorEffect.TintColor = Color3.fromRGB(c,c,c) else ColorEffect.Brightness = 0 ColorEffect.TintColor = Color3.fromRGB(255,255,255) endend})UserInputService.JumpRequest:Connect(function() if isInfJumpEnabled and localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then localPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end end)UserInputService.InputBegan:Connect(function(input, gpe) if not gpe and input.KeyCode == aimbotKey and isKeybindEnabled then toggleAimbot() end end) quickAimButton.MouseButton1Click:Connect(function() toggleAimbot() end) RunService.RenderStepped:Connect(function() if isAimbotEnabled then local target = getClosestTarget() if target then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, target.Position), smoothSpeed) end end end) RunService.Heartbeat:Connect(function() local char = localPlayer.Character if char and char:FindFirstChild("Humanoid") then local hum = char.Humanoid hum.WalkSpeed = isSpeedEnabled and customWalkSpeed or defaultWalkSpeed hum.JumpPower = isJumpEnabled and customJumpPower or defaultJumpPower end end) localPlayer.CharacterAdded:Connect(function(char) isFlyEnabled = false stopFlying(char) stopFlying(false) end)end
+-- ==========================================
+-- UI Elements Setup
+-- ==========================================
+-- Aimbot Tab
+AimbotTab:CreateToggle({Name = "Aimbot Key [" .. aimbotKey.Name .. "]", CurrentValue = false, Callback = function(v) isAimbotEnabled = v end})
+AimbotTab:CreateToggle({Name = "Snow Aimbot", CurrentValue = false, Callback = function(v) isKeybindEnabled = v quickAimButton.Visible = v end})
+AimbotTab:CreateToggle({Name = "Snow FOV", CurrentValue = true, Callback = function(v) fovCircle.Visible = v end})
+AimbotTab:CreateSlider({Name = "FOV", Range = {10, 500}, Increment = 1, CurrentValue = 150, Callback = function(v) fovRadius = v fovCircle.Size = UDim2.new(0, v*2, 0, v*2) end})
+AimbotTab:CreateSlider({Name = "Speed", Range = {0.01, 1}, Increment = 0.01, CurrentValue = 0.1, Callback = function(v) smoothSpeed = v end})
+AimbotTab:CreateDropdown({Name = "Target Part", Options = {"Head", "HumanoidRootPart"}, CurrentOption = "Head", Callback = function(v) targetPartName = v end})
+AimbotTab:CreateToggle({Name = "Team Check", CurrentValue = false, Callback = function(v) useTeamCheck = v end})
+
+-- Player Tab
+PlayerTab:CreateToggle({Name = "Enable WalkSpeed", CurrentValue = false, Callback = function(v) isSpeedEnabled = v end})
+PlayerTab:CreateSlider({Name = "WalkSpeed", Range = {16, 200}, Increment = 1, CurrentValue = 16, Callback = function(v) customWalkSpeed = v end})
+PlayerTab:CreateToggle({Name = "Enable JumpPower", CurrentValue = false, Callback = function(v) isJumpEnabled = v end})
+PlayerTab:CreateSlider({Name = "JumpPower", Range = {50, 300}, Increment = 1, CurrentValue = 50, Callback = function(v) customJumpPower = v end})
+PlayerTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) isInfJumpEnabled = v end})
+PlayerTab:CreateToggle({Name = "Fly", CurrentValue = false, Callback = function(v) 
+    isFlyEnabled = v 
+    local char = localPlayer.Character 
+    if char then 
+        if v then startFlying(char) else stopFlying(char) end 
+    end 
+end})
+PlayerTab:CreateSlider({Name = "Fly Speed", Range = {10, 200}, Increment = 5, CurrentValue = 50, Callback = function(v) flySpeed = v end})
+PlayerTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(v) toggleNoclip(v) end})
+
+-- Boost fps Tab
+BoostFpsTab:CreateToggle({Name = "Boost fps", CurrentValue = false, Callback = function(v) applyBoostFps(v) end})
+BoostFpsTab:CreateToggle({Name = "Snow FPS & PING", CurrentValue = false, Callback = function(v) StatLabel.Visible = v end})
+BoostFpsTab:CreateSlider({Name = "Brightness / Darkness", Range = {-100, 100}, Increment = 1, CurrentValue = 0, Callback = function(v)
+    if v > 0 then ColorEffect.Brightness = (v/100)*0.6 ColorEffect.TintColor = Color3.fromRGB(255,255,255)
+    elseif v < 0 then ColorEffect.Brightness = 0 local c = 255 - ((math.abs(v)/100)*200) ColorEffect.TintColor = Color3.fromRGB(c,c,c)
+    else ColorEffect.Brightness = 0 ColorEffect.TintColor = Color3.fromRGB(255,255,255) end
+end})
+
+-- Event Connections
+UserInputService.JumpRequest:Connect(function()
+    if isInfJumpEnabled and localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
+        localPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == aimbotKey and isKeybindEnabled then toggleAimbot() end
+end)
+
+quickAimButton.MouseButton1Click:Connect(function() toggleAimbot() end)
+
+RunService.RenderStepped:Connect(function()
+    if isAimbotEnabled then
+        local target = getClosestTarget()
+        if target then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, target.Position), smoothSpeed) end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    local char = localPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local hum = char.Humanoid
+        hum.WalkSpeed = isSpeedEnabled and customWalkSpeed or defaultWalkSpeed
+        hum.JumpPower = isJumpEnabled and customJumpPower or defaultJumpPower
+    end
+end)
+
+localPlayer.CharacterAdded:Connect(function(char)
+    isFlyEnabled = false
+    stopFlying(char)
+    toggleNoclip(false)
+end)
