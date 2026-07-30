@@ -2,7 +2,7 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 
 WindUI:Notify({
     Title = "B Hub",
-    Content = "Script Loaded Successfully & 100% Instant!",
+    Content = "Script Loaded Successfully & Universal Smart Target Ready!",
     Duration = 3,
     Icon = "sparkles"
 })
@@ -83,7 +83,6 @@ local selectedConfigToLoad = "None"
 local configDropdownWidget = nil
 local aimbotToggleWidget = nil
 
--- ตัวแปรเก็บ Widget UI ทั้งหมดเพื่อให้ Config โหลดค่าแล้วไปปรับหน้าจอ UI อัตโนมัติ
 local uiWidgets = {}
 
 -- [ระบบแก้แลกในระยะยาว] เคลียร์เมมโมรี่ขยะอัตโนมัติทุกๆ 30 วินาที
@@ -225,15 +224,42 @@ local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
 
-local function findCustomHead(model)
-    local head = model:FindFirstChild("Head") or model:FindFirstChild("head")
-    if head and head:IsA("BasePart") then return head end
-    for _, child in ipairs(model:GetDescendants()) do
-        if child:IsA("BasePart") and (string.lower(child.Name) == "head" or string.find(string.lower(child.Name), "head")) then
-            return child
+-- [ระบบค้นหาตำแหน่งอัจฉริยะรองรับทุกโครงสร้างแมพ 100%]
+local function getUniversalTargetPart(character)
+    if not character then return nil end
+    
+    if targetPartName == "Head" then
+        -- ค้นหาหัวทุกรูปแบบ (รองรับ R6, R15 และ Custom Rigs ทุกประเภท)
+        local head = character:FindFirstChild("Head") or character:FindFirstChild("head")
+        if head and head:IsA("BasePart") then return head end
+        for _, child in ipairs(character:GetDescendants()) do
+            if child:IsA("BasePart") then
+                local name = string.lower(child.Name)
+                if string.find(name, "head") or string.find(name, "face") or string.find(name, "helmet") then
+                    return child
+                end
+            end
+        end
+    else
+        -- ค้นหาตัวหรือจุดศูนย์กลางลำตัว (Body / Torso / HumanoidRootPart)
+        local body = character:FindFirstChild("HumanoidRootPart") 
+            or character:FindFirstChild("UpperTorso") 
+            or character:FindFirstChild("Torso")
+            or character:FindFirstChild("LowerTorso")
+        if body and body:IsA("BasePart") then return body end
+        
+        for _, child in ipairs(character:GetDescendants()) do
+            if child:IsA("BasePart") then
+                local name = string.lower(child.Name)
+                if string.find(name, "torso") or string.find(name, "chest") or string.find(name, "body") or string.find(name, "root") then
+                    return child
+                end
+            end
         end
     end
-    return model:FindFirstChild("HumanoidRootPart")
+    
+    -- สำรองตัวเลือกสุดท้าย หากหาไม่เจอให้ใช้ HumanoidRootPart หรือ Part ชิ้นแรกสุด
+    return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildOfClass("BasePart")
 end
 
 local function isVisible(targetPart, character)
@@ -255,7 +281,7 @@ local function getClosestTargetInFOV()
     local function checkValidTarget(object, playerOwner)
         if useTeamCheck and playerOwner and playerOwner.Team == localPlayer.Team then return end
         if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
-            local targetPart = (targetPartName == "Head") and findCustomHead(object) or (object:FindFirstChild("HumanoidRootPart") or object:FindFirstChild("Torso"))
+            local targetPart = getUniversalTargetPart(object)
             if targetPart then
                 if useWallCheck and not isVisible(targetPart, object) then return end
                 local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
@@ -295,7 +321,7 @@ local function applyBillboardESP(player)
     if player == localPlayer then return end
     local function createGui(char)
         if not char then return end
-        local head = char:WaitForChild("Head", 5) or char:FindFirstChild("HumanoidRootPart")
+        local head = getUniversalTargetPart(char)
         if not head then return end
         local existing = head:FindFirstChild("BHubESP")
         if existing then existing:Destroy() end
@@ -329,7 +355,7 @@ local function updateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= localPlayer and player.Character then
             local char = player.Character
-            local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+            local head = getUniversalTargetPart(char)
             local hum = char:FindFirstChildOfClass("Humanoid")
             local bgui = head and head:FindFirstChild("BHubESP")
             if bgui and hum then
@@ -497,7 +523,6 @@ local function loadNamedConfig(name)
         local raw = readfile(filePath)
         local success, configData = pcall(function() return HttpService:JSONDecode(raw) end)
         if success and configData then
-            -- โหลดค่าลงตัวแปรหลัก
             isAimbotEnabled = configData.isAimbotEnabled or false
             fovRadius = configData.fovRadius or fovRadius
             smoothSpeed = math.clamp(configData.smoothSpeed or smoothSpeed, 0.01, 1)
@@ -529,7 +554,6 @@ local function loadNamedConfig(name)
             flySpeed = configData.flySpeed or flySpeed
             isNoclipEnabled = configData.isNoclipEnabled or false
 
-            -- อัปเดตการแสดงผลบนหน้าจอ UI ทันที
             setAimbotState(isAimbotEnabled)
             if fovCircle then 
                 fovCircle.Visible = isFovVisible 
@@ -537,30 +561,29 @@ local function loadNamedConfig(name)
             end
             updateLighting()
 
-            -- ซิงค์ค่ากลับไปที่ Widget บน UI
-            for name, widget in pairs(uiWidgets) do
-                if name == "AimbotToggle" then widget:Set(isAimbotEnabled)
-                elseif name == "FovToggle" then widget:Set(isFovVisible)
-                elseif name == "FovSlider" then widget:Set(fovRadius)
-                elseif name == "SmoothSlider" then widget:Set(math.clamp(math.floor(smoothSpeed * 100), 1, 100))
-                elseif name == "TeamCheckToggle" then widget:Set(useTeamCheck)
-                elseif name == "WallCheckToggle" then widget:Set(useWallCheck)
-                elseif name == "RedChamsToggle" then widget:Set(isRedChamsEnabled)
-                elseif name == "NameEspToggle" then widget:Set(isNameEspEnabled)
-                elseif name == "DistEspToggle" then widget:Set(isDistanceEspEnabled)
-                elseif name == "TracersToggle" then widget:Set(isTracersEnabled)
-                elseif name == "FullbrightToggle" then widget:Set(isFullbrightEnabled)
-                elseif name == "NoFogToggle" then widget:Set(isNoFogEnabled)
-                elseif name == "SpeedToggle" then widget:Set(isSpeedEnabled)
-                elseif name == "SpeedSlider" then widget:Set(customWalkSpeed)
-                elseif name == "JumpToggle" then widget:Set(isJumpEnabled)
-                elseif name == "JumpSlider" then widget:Set(customJumpPower)
-                elseif name == "CameraFovSlider" then widget:Set(camera.FieldOfView)
-                elseif name == "InfJumpToggle" then widget:Set(isInfJumpEnabled)
-                elseif name == "AntiAfkToggle" then widget:Set(isAntiAfkEnabled)
-                elseif name == "FlyToggle" then widget:Set(isFlyEnabled)
-                elseif name == "FlySpeedSlider" then widget:Set(flySpeed)
-                elseif name == "NoclipToggle" then widget:Set(isNoclipEnabled)
+            for widgetName, widget in pairs(uiWidgets) do
+                if widgetName == "AimbotToggle" then widget:Set(isAimbotEnabled)
+                elseif widgetName == "FovToggle" then widget:Set(isFovVisible)
+                elseif widgetName == "FovSlider" then widget:Set(fovRadius)
+                elseif widgetName == "SmoothSlider" then widget:Set(math.clamp(math.floor(smoothSpeed * 100), 1, 100))
+                elseif widgetName == "TeamCheckToggle" then widget:Set(useTeamCheck)
+                elseif widgetName == "WallCheckToggle" then widget:Set(useWallCheck)
+                elseif widgetName == "RedChamsToggle" then widget:Set(isRedChamsEnabled)
+                elseif widgetName == "NameEspToggle" then widget:Set(isNameEspEnabled)
+                elseif widgetName == "DistEspToggle" then widget:Set(isDistanceEspEnabled)
+                elseif widgetName == "TracersToggle" then widget:Set(isTracersEnabled)
+                elseif widgetName == "FullbrightToggle" then widget:Set(isFullbrightEnabled)
+                elseif widgetName == "NoFogToggle" then widget:Set(isNoFogEnabled)
+                elseif widgetName == "SpeedToggle" then widget:Set(isSpeedEnabled)
+                elseif widgetName == "SpeedSlider" then widget:Set(customWalkSpeed)
+                elseif widgetName == "JumpToggle" then widget:Set(isJumpEnabled)
+                elseif widgetName == "JumpSlider" then widget:Set(customJumpPower)
+                elseif widgetName == "CameraFovSlider" then widget:Set(camera.FieldOfView)
+                elseif widgetName == "InfJumpToggle" then widget:Set(isInfJumpEnabled)
+                elseif widgetName == "AntiAfkToggle" then widget:Set(isAntiAfkEnabled)
+                elseif widgetName == "FlyToggle" then widget:Set(isFlyEnabled)
+                elseif widgetName == "FlySpeedSlider" then widget:Set(flySpeed)
+                elseif widgetName == "NoclipToggle" then widget:Set(isNoclipEnabled)
                 end
             end
 
@@ -594,7 +617,7 @@ uiWidgets["FovToggle"] = AimbotTab:Toggle({ Title = "Snow FOV", Value = true, Ca
 uiWidgets["FovSlider"] = AimbotTab:Slider({ Title = "FOV Radius", Value = { Min = 10, Max = 500, Default = fovRadius }, Callback = function(V) fovRadius = V if fovCircle then fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) end end })
 AimbotTab:Colorpicker({ Title = "FOV Color Customizer", Default = fovColor, Callback = function(C) fovColor = C if fovStroke then fovStroke.Color = C end end })
 uiWidgets["SmoothSlider"] = AimbotTab:Slider({ Title = "Smooth Speed", Value = { Min = 1, Max = 100, Default = math.clamp(math.floor(smoothSpeed * 100), 1, 100) }, Callback = function(V) smoothSpeed = math.clamp(V / 100, 0.01, 1) end })
-AimbotTab:Dropdown({ Title = "Target Part", Values = {"head", "body"}, Value = "head", Callback = function(O) targetPartName = (O == "head") and "Head" or "HumanoidRootPart" end })
+AimbotTab:Dropdown({ Title = "Target Part", Values = {"head", "body"}, Value = "head", Callback = function(O) targetPartName = (O == "head") and "Head" or "Body" end })
 uiWidgets["TeamCheckToggle"] = AimbotTab:Toggle({ Title = "Team Check", Value = false, Callback = function(V) useTeamCheck = V end })
 uiWidgets["WallCheckToggle"] = AimbotTab:Toggle({ Title = "Wall Check", Value = false, Callback = function(V) useWallCheck = V end })
 
