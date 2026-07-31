@@ -1,8 +1,8 @@
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+Durationionionssfully WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 WindUI:Notify({
     Title = "B Hub",
-    Content = "B hub Script Loaded Successfully",
+    Content = "B hub Script Loaded Really!",
     Duration = 3,
     Icon = "sparkles"
 })
