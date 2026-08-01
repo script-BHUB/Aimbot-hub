@@ -1,948 +1,1060 @@
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-
-WindUI:Notify({
-    Title = "B Hub",
-    Content = "B hub Script Loaded Successfully",
-    Duration = 3,
-    Icon = "sparkles"
-})
-
-local Window = WindUI:CreateWindow({
-    Title = "B hub",
-    Icon = "sparkles",
-    Author = "by Snow",
-    Folder = "BHubConfig",
-    Size = UDim2.fromOffset(580, 460),
-    Transparent = true,
-    Theme = "Dark"
-})
-
-local AimbotTab = Window:Tab({ Title = "Aimbot", Icon = "crosshair" })
-local VisualsTab = Window:Tab({ Title = "Visuals & ESP", Icon = "eye" })
-local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
-local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
-
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local VirtualUser = game:GetService("VirtualUser")
-local Lighting = game:GetService("Lighting")
-local HttpService = game:GetService("HttpService")
 
-local localPlayer = Players.LocalPlayer
-local camera = Workspace.CurrentCamera
+local Player = Players.LocalPlayer
 
-local fovRadius = 150
-local fovYOffset = -30
-local smoothSpeed = 0.1
-local targetPartName = "Head"
-local isAimbotEnabled = false
-local isFovVisible = true
-local isQuickAimVisible = false
-local quickAimSize = 75
-local useTeamCheck = false
-local useWallCheck = false
-local fovColor = Color3.fromRGB(255, 255, 255)
+-- =========================================
+-- ส่วนระบบยืนยันคีย์ (Key System UI)
+-- =========================================
+local KeyScreenGui = Instance.new("ScreenGui")
+KeyScreenGui.Name = "BHubKeySystem"
+KeyScreenGui.ResetOnSpawn = false
+KeyScreenGui.Parent = CoreGui
 
-local defaultWalkSpeed = 16
-local defaultJumpPower = 50
-local isSpeedEnabled = false
-local isJumpEnabled = false
-local customWalkSpeed = 16
-local customJumpPower = 50
-local isInfJumpEnabled = false
-local isNoclipEnabled = false
-local isAntiAfkEnabled = false
-local isAntiFlingEnabled = false
-local isAntiStunEnabled = false
+local KeyMainFrame = Instance.new("Frame")
+KeyMainFrame.Name = "KeyMainFrame"
+KeyMainFrame.Size = UDim2.new(0, 360, 0, 220)
+KeyMainFrame.Position = UDim2.new(0.5, -180, 0.5, -110)
+KeyMainFrame.BackgroundColor3 = Color3.fromRGB(16, 17, 24)
+KeyMainFrame.BorderSizePixel = 0
+KeyMainFrame.Parent = KeyScreenGui
 
-local noclipConnection = nil
-local antiAfkConnection = nil
-local antiFlingConnection = nil
-local antiStunConnection = nil
+Instance.new("UICorner", KeyMainFrame).CornerRadius = UDim.new(0, 10)
 
-local isFlyEnabled = false
-local flySpeed = 50
-local bodyVelocity = nil
-local bodyGyro = nil
-local flyHeartbeatConnection = nil
+local KeyStroke = Instance.new("UIStroke", KeyMainFrame)
+KeyStroke.Thickness = 1.2
+KeyStroke.Color = Color3.fromRGB(0, 210, 255)
 
-local isNameEspEnabled = false
-local isDistanceEspEnabled = false
-local isTracersEnabled = false
-local isRedChamsEnabled = false
-local isBoxEspEnabled = false
-local isFullbrightEnabled = false
-local isNoFogEnabled = false
+local KeyTitle = Instance.new("TextLabel", KeyMainFrame)
+KeyTitle.Size = UDim2.new(1, 0, 0, 50)
+KeyTitle.BackgroundTransparency = 1
+KeyTitle.Text = "B Hub - Key System"
+KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyTitle.Font = Enum.Font.GothamBold
+KeyTitle.TextSize = 16
 
-local defaultBrightness = Lighting.Brightness
-local defaultClockTime = Lighting.ClockTime
-local defaultFogEnd = Lighting.FogEnd
+local KeyTextBox = Instance.new("TextBox", KeyMainFrame)
+KeyTextBox.Size = UDim2.new(0, 310, 0, 42)
+KeyTextBox.Position = UDim2.new(0.5, -155, 0, 65)
+KeyTextBox.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+KeyTextBox.PlaceholderText = "กรุณาใส่คีย์ที่นี่..."
+KeyTextBox.PlaceholderColor3 = Color3.fromRGB(90, 95, 110)
+KeyTextBox.Text = ""
+KeyTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyTextBox.Font = Enum.Font.GothamMedium
+KeyTextBox.TextSize = 13
+Instance.new("UICorner", KeyTextBox).CornerRadius = UDim.new(0, 6)
 
-local isFpsPingVisible = false
-local frameCount = 0
-local lastFpsUpdate = tick()
-local currentFps = 0
-local tracersTable = {}
-local boxEspTable = {}
+local SubmitBtn = Instance.new("TextButton", KeyMainFrame)
+SubmitBtn.Size = UDim2.new(0, 150, 0, 38)
+SubmitBtn.Position = UDim2.new(0.5, -155, 0, 125)
+SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+SubmitBtn.Text = "ยืนยันคีย์"
+SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubmitBtn.Font = Enum.Font.GothamBold
+SubmitBtn.TextSize = 13
+Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 6)
 
-local currentConfigInputName = ""
-local selectedConfigToLoad = "None"
-local configDropdownWidget = nil
-local aimbotToggleWidget = nil
-local uiWidgets = {}
+local GetKeyBtn = Instance.new("TextButton", KeyMainFrame)
+GetKeyBtn.Size = UDim2.new(0, 150, 0, 38)
+GetKeyBtn.Position = UDim2.new(0.5, 5, 0, 125)
+GetKeyBtn.BackgroundColor3 = Color3.fromRGB(45, 48, 65)
+GetKeyBtn.Text = "รับคีย์"
+GetKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetKeyBtn.Font = Enum.Font.GothamBold
+GetKeyBtn.TextSize = 13
+Instance.new("UICorner", GetKeyBtn).CornerRadius = UDim.new(0, 6)
 
-task.spawn(function()
-    while true do
-        task.wait(30)
-        pcall(function() collectgarbage("collect") end)
-    end
+local StatusLabel = Instance.new("TextLabel", KeyMainFrame)
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0, 0, 1, -25)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = ""
+StatusLabel.TextColor3 = Color3.fromRGB(255, 55, 85)
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 11
+
+-- กำหนดคีย์ที่ถูกต้องตรงนี้ (คุณสามารถเปลี่ยนข้อความคีย์ได้ตามต้องการ)
+local CORRECT_KEY = "BHub2026"
+
+-- ปุ่มคัดลอกลิงก์รับคีย์ (ถ้ามี)
+GetKeyBtn.MouseButton1Click:Connect(function()
+	if setclipboard then
+		setclipboard "BHub2026" -- เปลี่ยนเป็นลิงก์รับคีย์ของคุณ
+		StatusLabel.TextColor3 = Color3.fromRGB(0, 210, 255)
+		StatusLabel.Text = "คัดลอกลิงก์รับคีย์ลงคลิปบอร์ดแล้ว!"
+	end
 end)
 
-local function startFlying(character)
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoidRootPart or not humanoid then return end
-    humanoid.PlatformStand = true
-    humanoid.AutoRotate = false
-    bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Name = "FlyVelocity"
-    bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 10^6
-    bodyVelocity.Velocity = Vector3.zero
-    bodyVelocity.Parent = humanoidRootPart
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.Name = "FlyGyro"
-    bodyGyro.MaxTorque = Vector3.new(1, 1, 1) * 10^6
-    bodyGyro.P = 10000
-    bodyGyro.CFrame = camera.CFrame
-    bodyGyro.Parent = humanoidRootPart
-    flyHeartbeatConnection = RunService.Heartbeat:Connect(function()
-        if not isFlyEnabled then return end
-        local char = localPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum or not bodyVelocity or not bodyGyro then return end
-        bodyGyro.CFrame = camera.CFrame
-        local moveDir = hum.MoveDirection
-        if moveDir.Magnitude > 0 then
-            local camCFrame = camera.CFrame
-            local lookVector = camCFrame.LookVector
-            local rightVector = camCFrame.RightVector
-            local flatLook = Vector3.new(lookVector.X, 0, lookVector.Z)
-            if flatLook.Magnitude > 0 then flatLook = flatLook.Unit end
-            local flatRight = Vector3.new(rightVector.X, 0, rightVector.Z)
-            if flatRight.Magnitude > 0 then flatRight = flatRight.Unit end
-            local forwardInput = moveDir:Dot(flatLook)
-            local rightInput = moveDir:Dot(flatRight)
-            local flyVector = (lookVector * forwardInput) + (rightVector * rightInput)
-            if flyVector.Magnitude > 0 then flyVector = flyVector.Unit end
-            bodyVelocity.Velocity = flyVector * flySpeed
-        else
-            bodyVelocity.Velocity = Vector3.zero
-        end
-    end)
-end
-
-local function stopFlying(character)
-    if flyHeartbeatConnection then
-        flyHeartbeatConnection:Disconnect()
-        flyHeartbeatConnection = nil
-    end
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.PlatformStand = false
-        humanoid.AutoRotate = true
-    end
-    if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
-    if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
-end
-
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UltimateAimbotUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = game:GetService("CoreGui")
-
-local quickAimButton = Instance.new("TextButton")
-quickAimButton.Name = "QuickAimButton"
-quickAimButton.Size = UDim2.new(0, quickAimSize, 0, quickAimSize)
-quickAimButton.Position = UDim2.new(1, -90, 0, 10)
-quickAimButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-quickAimButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-quickAimButton.TextSize = 13
-quickAimButton.Text = "Aim: OFF"
-quickAimButton.Font = Enum.Font.SourceSansBold
-quickAimButton.Active = true
-quickAimButton.Visible = isQuickAimVisible
-quickAimButton.Parent = screenGui
-
-local quickAimCorner = Instance.new("UICorner")
-quickAimCorner.CornerRadius = UDim.new(1, 0)
-quickAimCorner.Parent = quickAimButton
-
-local quickAimStroke = Instance.new("UIStroke")
-quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
-quickAimStroke.Thickness = 2
-quickAimStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-quickAimStroke.Parent = quickAimButton
-
-local fpsPingLabel = Instance.new("TextLabel")
-fpsPingLabel.Name = "FpsPingLabel"
-fpsPingLabel.Size = UDim2.new(0, 180, 0, 28)
-fpsPingLabel.Position = UDim2.new(0, 10, 0, 10)
-fpsPingLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-fpsPingLabel.BackgroundTransparency = 0.2
-fpsPingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-fpsPingLabel.TextSize = 13
-fpsPingLabel.Font = Enum.Font.SourceSansBold
-fpsPingLabel.Text = "FPS: 0 | Ping: 0 ms"
-fpsPingLabel.Visible = false
-fpsPingLabel.Parent = screenGui
-
-local fpsPingCorner = Instance.new("UICorner")
-fpsPingCorner.CornerRadius = UDim.new(0, 6)
-fpsPingCorner.Parent = fpsPingLabel
-
-local fpsPingStroke = Instance.new("UIStroke")
-fpsPingStroke.Color = Color3.fromRGB(255, 255, 255)
-fpsPingStroke.Thickness = 1
-fpsPingStroke.Transparency = 0.6
-fpsPingStroke.Parent = fpsPingLabel
-
-local fovCircle = Instance.new("Frame")
-fovCircle.Name = "FOVCircle"
-fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
-fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-fovCircle.Position = UDim2.new(0.5, 0, 0.5, fovYOffset)
-fovCircle.BackgroundTransparency = 1
-fovCircle.Visible = isFovVisible
-fovCircle.Parent = screenGui
-
-local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = fovColor
-fovStroke.Thickness = 1
-fovStroke.Transparency = 0.5
-fovStroke.Parent = fovCircle
-
-local fovCorner = Instance.new("UICorner")
-fovCorner.CornerRadius = UDim.new(1, 0)
-fovCorner.Parent = fovCircle
-
-local function getUniversalTargetPart(character)
-    if not character then return nil end
-    if targetPartName == "Head" then
-        local head = character:FindFirstChild("Head") or character:FindFirstChild("head")
-        if head and head:IsA("BasePart") then return head end
-        for _, child in ipairs(character:GetDescendants()) do
-            if child:IsA("BasePart") then
-                local name = string.lower(child.Name)
-                if string.find(name, "head") or string.find(name, "face") or string.find(name, "helmet") then
-                    return child
-                end
-            end
-        end
-    else
-        local body = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or character:FindFirstChild("LowerTorso")
-        if body and body:IsA("BasePart") then return body end
-        for _, child in ipairs(character:GetDescendants()) do
-            if child:IsA("BasePart") then
-                local name = string.lower(child.Name)
-                if string.find(name, "torso") or string.find(name, "chest") or string.find(name, "body") or string.find(name, "root") then
-                    return child
-                end
-            end
-        end
-    end
-    return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildOfClass("BasePart")
-end
-
-local function isVisible(targetPart, character)
-    local origin = camera.CFrame.Position
-    local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {localPlayer.Character, character, camera}
-    raycastParams.IgnoreWater = true
-    return Workspace:Raycast(origin, direction, raycastParams) == nil
-end
-
-local function getClosestTargetInFOV()
-    local character = localPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-    local closestTarget = nil
-    local shortestDistance = fovRadius
-    local centerScreen = Vector2.new(camera.ViewportSize.X / 2, (camera.ViewportSize.Y / 2) + fovYOffset)
-    local function checkValidTarget(object, playerOwner)
-        if useTeamCheck and playerOwner and playerOwner.Team == localPlayer.Team then return end
-        if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
-            local targetPart = getUniversalTargetPart(object)
-            if targetPart then
-                if useWallCheck and not isVisible(targetPart, object) then return end
-                local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-                if onScreen then
-                    local distanceToCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
-                    if distanceToCenter < shortestDistance then
-                        shortestDistance = distanceToCenter
-                        closestTarget = targetPart
-                    end
-                end
-            end
-        end
-    end
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character then
-            checkValidTarget(player.Character, player)
-        end
-    end
-    return closestTarget
-end
-
-local function updateAimbot()
-    if not isAimbotEnabled then return end
-    local targetPart = getClosestTargetInFOV()
-    if targetPart then
-        local currentCFrame = camera.CFrame
-        local targetCFrame = CFrame.new(currentCFrame.Position, targetPart.Position)
-        if smoothSpeed >= 1 then
-            camera.CFrame = targetCFrame
-        else
-            camera.CFrame = currentCFrame:Lerp(targetCFrame, math.clamp(smoothSpeed, 0.01, 0.99))
-        end
-    end
-end
-
-local function applyBillboardESP(player)
-    if player == localPlayer then return end
-    local function createGui(char)
-        if not char then return end
-        local head = getUniversalTargetPart(char)
-        if not head then return end
-        local existing = head:FindFirstChild("BHubESP")
-        if existing then existing:Destroy() end
-        local bgui = Instance.new("BillboardGui")
-        bgui.Name = "BHubESP"
-        bgui.Adornee = head
-        bgui.Size = UDim2.new(0, 150, 0, 30)
-        bgui.StudsOffset = Vector3.new(0, 2.5, 0)
-        bgui.AlwaysOnTop = true
-        bgui.Parent = head
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "ESPLabel"
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        textLabel.TextStrokeTransparency = 0
-        textLabel.TextSize = 13
-        textLabel.Font = Enum.Font.SourceSansBold
-        textLabel.Parent = bgui
-    end
-    if player.Character then createGui(player.Character) end
-    player.CharacterAdded:Connect(createGui)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do applyBillboardESP(p) end
-Players.PlayerAdded:Connect(applyBillboardESP)
-
-Players.PlayerRemoving:Connect(function(player)
-    if tracersTable[player] then
-        pcall(function() tracersTable[player]:Remove() end)
-        tracersTable[player] = nil
-    end
-    if boxEspTable[player] then
-        pcall(function()
-            for _, line in pairs(boxEspTable[player]) do line:Remove() end
-        end)
-        boxEspTable[player] = nil
-    end
+-- ฟังก์ชันเมื่อกดปุ่มยืนยันคีย์
+local isKeyVerified = false
+SubmitBtn.MouseButton1Click:Connect(function()
+	if KeyTextBox.Text == CORRECT_KEY then
+		isKeyVerified = true
+		StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+		StatusLabel.Text = "ยืนยันคีย์สำเร็จ กำลังเปิดเมนู..."
+		task.wait(1)
+		KeyScreenGui:Destroy()
+		
+		-- เริ่มรันโค้ดหลักของ B Hub หลังจากใส่คีย์ถูกต้อง
+		LoadMainScript()
+	else
+		StatusLabel.TextColor3 = Color3.fromRGB(255, 55, 85)
+		StatusLabel.Text = "คีย์ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง!"
+	end
 end)
 
-local function updateESP()
-    local myChar = localPlayer.Character
-    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    
-    for player, line in pairs(tracersTable) do
-        if not player or not player.Parent then
-            pcall(function() line:Remove() end)
-            tracersTable[player] = nil
-        end
-    end
+-- =========================================
+-- โค้ดหลักทั้งหมดของ B Hub (จะถูกเรียกเมื่อผ่าน Key)
+-- =========================================
+function LoadMainScript()
+	local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer then
-            local char = player.Character
-            local line = tracersTable[player]
-            local box = boxEspTable[player]
-            
-            if not char or not char.Parent or not char:FindFirstChild("HumanoidRootPart") then
-                if line then line.Visible = false end
-                if box then for _, l in pairs(box) do l.Visible = false end end
-            else
-                local head = getUniversalTargetPart(char)
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                local bgui = head and head:FindFirstChild("BHubESP")
-                if bgui and hum then
-                    local label = bgui:FindFirstChild("ESPLabel")
-                    local textParts = {}
-                    if isNameEspEnabled then table.insert(textParts, player.Name) end
-                    if isDistanceEspEnabled and myHRP and char:FindFirstChild("HumanoidRootPart") then
-                        local dist = math.floor((char.HumanoidRootPart.Position - myHRP.Position).Magnitude)
-                        table.insert(textParts, "[" .. dist .. "m]")
-                    end
-                    if label then
-                        label.Text = table.concat(textParts, " ")
-                        label.Visible = (isNameEspEnabled or isDistanceEspEnabled)
-                    end
-                end
-                local highlight = char:FindFirstChild("RedChamsHighlight")
-                if isRedChamsEnabled and hum and hum.Health > 0 then
-                    if not highlight then
-                        highlight = Instance.new("Highlight")
-                        highlight.Name = "RedChamsHighlight"
-                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.FillTransparency = 0.3
-                        highlight.OutlineTransparency = 0
-                        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        highlight.Adornee = char
-                        highlight.Parent = char
-                    end
-                    highlight.Enabled = true
-                else
-                    if highlight then highlight.Enabled = false end
-                end
-                if Drawing then
-                    if not line then
-                        line = Drawing.new("Line")
-                        line.Thickness = 1.5
-                        line.Color = Color3.fromRGB(255, 50, 50)
-                        line.Transparency = 0.8
-                        tracersTable[player] = line
-                    end
-                    if isTracersEnabled and char:FindFirstChild("HumanoidRootPart") and hum and hum.Health > 0 then
-                        local hrpPos, onScreen = camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
-                        if onScreen then
-                            line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                            line.To = Vector2.new(hrpPos.X, hrpPos.Y)
-                            line.Visible = true
-                        else
-                            line.Visible = false
-                        end
-                    else
-                        if line then line.Visible = false end
-                    end
+	WindUI:Notify({
+		Title = "B Hub",
+		Content = "B hub Script Loaded Successfully",
+		Duration = 3,
+		Icon = "sparkles"
+	})
 
-                    if not box then
-                        box = {
-                            Top = Drawing.new("Line"),
-                            Bottom = Drawing.new("Line"),
-                            Left = Drawing.new("Line"),
-                            Right = Drawing.new("Line")
-                        }
-                        for _, l in pairs(box) do
-                            l.Thickness = 1.5
-                            l.Color = Color3.fromRGB(255, 255, 255)
-                            l.Transparency = 0.8
-                        end
-                        boxEspTable[player] = box
-                    end
+	local Window = WindUI:CreateWindow({
+		Title = "B hub",
+		Icon = "sparkles",
+		Author = "by Snow",
+		Folder = "BHubConfig",
+		Size = UDim2.fromOffset(580, 460),
+		Transparent = true,
+		Theme = "Dark"
+	})
 
-                    if isBoxEspEnabled and char:FindFirstChild("HumanoidRootPart") and hum and hum.Health > 0 then
-                        local hrp = char.HumanoidRootPart
-                        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-                        if onScreen then
-                            local size = Vector2.new(2500 / pos.Z, 4000 / pos.Z)
-                            local topLeft = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
-                            local topRight = Vector2.new(pos.X + size.X / 2, pos.Y - size.Y / 2)
-                            local bottomLeft = Vector2.new(pos.X - size.X / 2, pos.Y + size.Y / 2)
-                            local bottomRight = Vector2.new(pos.X + size.X / 2, pos.Y + size.Y / 2)
+	local AimbotTab = Window:Tab({ Title = "Aimbot", Icon = "crosshair" })
+	local VisualsTab = Window:Tab({ Title = "Visuals & ESP", Icon = "eye" })
+	local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
+	local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
-                            box.Top.From = topLeft box.Top.To = topRight box.Top.Visible = true
-                            box.Bottom.From = bottomLeft box.Bottom.To = bottomRight box.Bottom.Visible = true
-                            box.Left.From = topLeft box.Left.To = bottomLeft box.Left.Visible = true
-                            box.Right.From = topRight box.Right.To = bottomRight box.Right.Visible = true
-                        else
-                            for _, l in pairs(box) do l.Visible = false end
-                        end
-                    else
-                        for _, l in pairs(box) do l.Visible = false end
-                    end
-                end
-            end
-        end
-    end
+	local Players = game:GetService("Players")
+	local RunService = game:GetService("RunService")
+	local UserInputService = game:GetService("UserInputService")
+	local Workspace = game:GetService("Workspace")
+	local VirtualUser = game:GetService("VirtualUser")
+	local Lighting = game:GetService("Lighting")
+	local HttpService = game:GetService("HttpService")
+
+	local localPlayer = Players.LocalPlayer
+	local camera = Workspace.CurrentCamera
+
+	local fovRadius = 150
+	local fovYOffset = -30
+	local smoothSpeed = 0.1
+	local targetPartName = "Head"
+	local isAimbotEnabled = false
+	local isFovVisible = true
+	local isQuickAimVisible = false
+	local quickAimSize = 75
+	local useTeamCheck = false
+	local useWallCheck = false
+	local fovColor = Color3.fromRGB(255, 255, 255)
+
+	local defaultWalkSpeed = 16
+	local defaultJumpPower = 50
+	local isSpeedEnabled = false
+	local isJumpEnabled = false
+	local customWalkSpeed = 16
+	local customJumpPower = 50
+	local isInfJumpEnabled = false
+	local isNoclipEnabled = false
+	local isAntiAfkEnabled = false
+	local isAntiFlingEnabled = false
+	local isAntiStunEnabled = false
+
+	local noclipConnection = nil
+	local antiAfkConnection = nil
+	local antiFlingConnection = nil
+	local antiStunConnection = nil
+
+	local isFlyEnabled = false
+	local flySpeed = 50
+	local bodyVelocity = nil
+	local bodyGyro = nil
+	local flyHeartbeatConnection = nil
+
+	local isNameEspEnabled = false
+	local isDistanceEspEnabled = false
+	local isTracersEnabled = false
+	local isRedChamsEnabled = false
+	local isBoxEspEnabled = false
+	local isFullbrightEnabled = false
+	local isNoFogEnabled = false
+
+	local defaultBrightness = Lighting.Brightness
+	local defaultClockTime = Lighting.ClockTime
+	local defaultFogEnd = Lighting.FogEnd
+
+	local isFpsPingVisible = false
+	local frameCount = 0
+	local lastFpsUpdate = tick()
+	local currentFps = 0
+	local tracersTable = {}
+	local boxEspTable = {}
+
+	local currentConfigInputName = ""
+	local selectedConfigToLoad = "None"
+	local configDropdownWidget = nil
+	local aimbotToggleWidget = nil
+	local uiWidgets = {}
+
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			pcall(function() collectgarbage("collect") end)
+		end
+	end)
+
+	local function startFlying(character)
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not humanoidRootPart or not humanoid then return end
+		humanoid.PlatformStand = true
+		humanoid.AutoRotate = false
+		bodyVelocity = Instance.new("BodyVelocity")
+		bodyVelocity.Name = "FlyVelocity"
+		bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 10^6
+		bodyVelocity.Velocity = Vector3.zero
+		bodyVelocity.Parent = humanoidRootPart
+		bodyGyro = Instance.new("BodyGyro")
+		bodyGyro.Name = "FlyGyro"
+		bodyGyro.MaxTorque = Vector3.new(1, 1, 1) * 10^6
+		bodyGyro.P = 10000
+		bodyGyro.CFrame = camera.CFrame
+		bodyGyro.Parent = humanoidRootPart
+		flyHeartbeatConnection = RunService.Heartbeat:Connect(function()
+			if not isFlyEnabled then return end
+			local char = localPlayer.Character
+			if not char then return end
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if not hrp or not hum or not bodyVelocity or not bodyGyro then return end
+			bodyGyro.CFrame = camera.CFrame
+			local moveDir = hum.MoveDirection
+			if moveDir.Magnitude > 0 then
+				local camCFrame = camera.CFrame
+				local lookVector = camCFrame.LookVector
+				local rightVector = camCFrame.RightVector
+				local flatLook = Vector3.new(lookVector.X, 0, lookVector.Z)
+				if flatLook.Magnitude > 0 then flatLook = flatLook.Unit end
+				local flatRight = Vector3.new(rightVector.X, 0, rightVector.Z)
+				if flatRight.Magnitude > 0 then flatRight = flatRight.Unit end
+				local forwardInput = moveDir:Dot(flatLook)
+				local rightInput = moveDir:Dot(flatRight)
+				local flyVector = (lookVector * forwardInput) + (rightVector * rightInput)
+				if flyVector.Magnitude > 0 then flyVector = flyVector.Unit end
+				bodyVelocity.Velocity = flyVector * flySpeed
+			else
+				bodyVelocity.Velocity = Vector3.zero
+			end
+		end)
+	end
+
+	local function stopFlying(character)
+		if flyHeartbeatConnection then
+			flyHeartbeatConnection:Disconnect()
+			flyHeartbeatConnection = nil
+		end
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.PlatformStand = false
+			humanoid.AutoRotate = true
+		end
+		if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
+		if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+	end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "UltimateAimbotUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = CoreGui
+
+	local quickAimButton = Instance.new("TextButton")
+	quickAimButton.Name = "QuickAimButton"
+	quickAimButton.Size = UDim2.new(0, quickAimSize, 0, quickAimSize)
+	quickAimButton.Position = UDim2.new(1, -90, 0, 10)
+	quickAimButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	quickAimButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+	quickAimButton.TextSize = 13
+	quickAimButton.Text = "Aim: OFF"
+	quickAimButton.Font = Enum.Font.SourceSansBold
+	quickAimButton.Active = true
+	quickAimButton.Visible = isQuickAimVisible
+	quickAimButton.Parent = screenGui
+
+	local quickAimCorner = Instance.new("UICorner")
+	quickAimCorner.CornerRadius = UDim.new(1, 0)
+	quickAimCorner.Parent = quickAimButton
+
+	local quickAimStroke = Instance.new("UIStroke")
+	quickAimStroke.Color = Color3.fromRGB(200, 200, 200)
+	quickAimStroke.Thickness = 2
+	quickAimStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	quickAimStroke.Parent = quickAimButton
+
+	local fpsPingLabel = Instance.new("TextLabel")
+	fpsPingLabel.Name = "FpsPingLabel"
+	fpsPingLabel.Size = UDim2.new(0, 180, 0, 28)
+	fpsPingLabel.Position = UDim2.new(0, 10, 0, 10)
+	fpsPingLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	fpsPingLabel.BackgroundTransparency = 0.2
+	fpsPingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fpsPingLabel.TextSize = 13
+	fpsPingLabel.Font = Enum.Font.SourceSansBold
+	fpsPingLabel.Text = "FPS: 0 | Ping: 0 ms"
+	fpsPingLabel.Visible = false
+	fpsPingLabel.Parent = screenGui
+
+	local fpsPingCorner = Instance.new("UICorner")
+	fpsPingCorner.CornerRadius = UDim.new(0, 6)
+	fpsPingCorner.Parent = fpsPingLabel
+
+	local fpsPingStroke = Instance.new("UIStroke")
+	fpsPingStroke.Color = Color3.fromRGB(255, 255, 255)
+	fpsPingStroke.Thickness = 1
+	fpsPingStroke.Transparency = 0.6
+	fpsPingStroke.Parent = fpsPingLabel
+
+	local fovCircle = Instance.new("Frame")
+	fovCircle.Name = "FOVCircle"
+	fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+	fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+	fovCircle.Position = UDim2.new(0.5, 0, 0.5, fovYOffset)
+	fovCircle.BackgroundTransparency = 1
+	fovCircle.Visible = isFovVisible
+	fovCircle.Parent = screenGui
+
+	local fovStroke = Instance.new("UIStroke")
+	fovStroke.Color = fovColor
+	fovStroke.Thickness = 1
+	fovStroke.Transparency = 0.5
+	fovStroke.Parent = fovCircle
+
+	local fovCorner = Instance.new("UICorner")
+	fovCorner.CornerRadius = UDim.new(1, 0)
+	fovCorner.Parent = fovCircle
+
+	local function getUniversalTargetPart(character)
+		if not character then return nil end
+		if targetPartName == "Head" then
+			local head = character:FindFirstChild("Head") or character:FindFirstChild("head")
+			if head and head:IsA("BasePart") then return head end
+			for _, child in ipairs(character:GetDescendants()) do
+				if child:IsA("BasePart") then
+					local name = string.lower(child.Name)
+					if string.find(name, "head") or string.find(name, "face") or string.find(name, "helmet") then
+						return child
+					end
+				end
+			end
+		else
+			local body = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or character:FindFirstChild("LowerTorso")
+			if body and body:IsA("BasePart") then return body end
+			for _, child in ipairs(character:GetDescendants()) do
+				if child:IsA("BasePart") then
+					local name = string.lower(child.Name)
+					if string.find(name, "torso") or string.find(name, "chest") or string.find(name, "body") or string.find(name, "root") then
+						return child
+					end
+				end
+			end
+		end
+		return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildOfClass("BasePart")
+	end
+
+	local function isVisible(targetPart, character)
+		local origin = camera.CFrame.Position
+		local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
+		local raycastParams = RaycastParams.new()
+		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+		raycastParams.FilterDescendantsInstances = {localPlayer.Character, character, camera}
+		raycastParams.IgnoreWater = true
+		return Workspace:Raycast(origin, direction, raycastParams) == nil
+	end
+
+	local function getClosestTargetInFOV()
+		local character = localPlayer.Character
+		if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+		local closestTarget = nil
+		local shortestDistance = fovRadius
+		local centerScreen = Vector2.new(camera.ViewportSize.X / 2, (camera.ViewportSize.Y / 2) + fovYOffset)
+		local function checkValidTarget(object, playerOwner)
+			if useTeamCheck and playerOwner and playerOwner.Team == localPlayer.Team then return end
+			if object and object:FindFirstChild("Humanoid") and object.Humanoid.Health > 0 then
+				local targetPart = getUniversalTargetPart(object)
+				if targetPart then
+					if useWallCheck and not isVisible(targetPart, object) then return end
+					local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+					if onScreen then
+						local distanceToCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+						if distanceToCenter < shortestDistance then
+							shortestDistance = distanceToCenter
+							closestTarget = targetPart
+						end
+					end
+				end
+			end
+		end
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= localPlayer and player.Character then
+				checkValidTarget(player.Character, player)
+			end
+		end
+		return closestTarget
+	end
+
+	local function updateAimbot()
+		if not isAimbotEnabled then return end
+		local targetPart = getClosestTargetInFOV()
+		if targetPart then
+			local currentCFrame = camera.CFrame
+			local targetCFrame = CFrame.new(currentCFrame.Position, targetPart.Position)
+			if smoothSpeed >= 1 then
+				camera.CFrame = targetCFrame
+			else
+				camera.CFrame = currentCFrame:Lerp(targetCFrame, math.clamp(smoothSpeed, 0.01, 0.99))
+			end
+		end
+	end
+
+	local function applyBillboardESP(player)
+		if player == localPlayer then return end
+		local function createGui(char)
+			if not char then return end
+			local head = getUniversalTargetPart(char)
+			if not head then return end
+			local existing = head:FindFirstChild("BHubESP")
+			if existing then existing:Destroy() end
+			local bgui = Instance.new("BillboardGui")
+			bgui.Name = "BHubESP"
+			bgui.Adornee = head
+			bgui.Size = UDim2.new(0, 150, 0, 30)
+			bgui.StudsOffset = Vector3.new(0, 2.5, 0)
+			bgui.AlwaysOnTop = true
+			bgui.Parent = head
+			local textLabel = Instance.new("TextLabel")
+			textLabel.Name = "ESPLabel"
+			textLabel.Size = UDim2.new(1, 0, 1, 0)
+			textLabel.BackgroundTransparency = 1
+			textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			textLabel.TextStrokeTransparency = 0
+			textLabel.TextSize = 13
+			textLabel.Font = Enum.Font.SourceSansBold
+			textLabel.Parent = bgui
+		end
+		if player.Character then createGui(player.Character) end
+		player.CharacterAdded:Connect(createGui)
+	end
+
+	for _, p in ipairs(Players:GetPlayers()) do applyBillboardESP(p) end
+	Players.PlayerAdded:Connect(applyBillboardESP)
+
+	Players.PlayerRemoving:Connect(function(player)
+		if tracersTable[player] then
+			pcall(function() tracersTable[player]:Remove() end)
+			tracersTable[player] = nil
+		end
+		if boxEspTable[player] then
+			pcall(function()
+				for _, line in pairs(boxEspTable[player]) do line:Remove() end
+			end)
+			boxEspTable[player] = nil
+		end
+	end)
+
+	local function updateESP()
+		local myChar = localPlayer.Character
+		local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+		
+		for player, line in pairs(tracersTable) do
+			if not player or not player.Parent then
+				pcall(function() line:Remove() end)
+				tracersTable[player] = nil
+			end
+		end
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= localPlayer then
+				local char = player.Character
+				local line = tracersTable[player]
+				local box = boxEspTable[player]
+				
+				if not char or not char.Parent or not char:FindFirstChild("HumanoidRootPart") then
+					if line then line.Visible = false end
+					if box then for _, l in pairs(box) do l.Visible = false end end
+				else
+					local head = getUniversalTargetPart(char)
+					local hum = char:FindFirstChildOfClass("Humanoid")
+					local bgui = head and head:FindFirstChild("BHubESP")
+					if bgui and hum then
+						local label = bgui:FindFirstChild("ESPLabel")
+						local textParts = {}
+						if isNameEspEnabled then table.insert(textParts, player.Name) end
+						if isDistanceEspEnabled and myHRP and char:FindFirstChild("HumanoidRootPart") then
+							local dist = math.floor((char.HumanoidRootPart.Position - myHRP.Position).Magnitude)
+							table.insert(textParts, "[" .. dist .. "m]")
+						end
+						if label then
+							label.Text = table.concat(textParts, " ")
+							label.Visible = (isNameEspEnabled or isDistanceEspEnabled)
+						end
+					end
+					local highlight = char:FindFirstChild("RedChamsHighlight")
+					if isRedChamsEnabled and hum and hum.Health > 0 then
+						if not highlight then
+							highlight = Instance.new("Highlight")
+							highlight.Name = "RedChamsHighlight"
+							highlight.FillColor = Color3.fromRGB(255, 0, 0)
+							highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+							highlight.FillTransparency = 0.3
+							highlight.OutlineTransparency = 0
+							highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+							highlight.Adornee = char
+							highlight.Parent = char
+						end
+						highlight.Enabled = true
+					else
+						if highlight then highlight.Enabled = false end
+					end
+					if Drawing then
+						if not line then
+							line = Drawing.new("Line")
+							line.Thickness = 1.5
+							line.Color = Color3.fromRGB(255, 50, 50)
+							line.Transparency = 0.8
+							tracersTable[player] = line
+						end
+						if isTracersEnabled and char:FindFirstChild("HumanoidRootPart") and hum and hum.Health > 0 then
+							local hrpPos, onScreen = camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
+							if onScreen then
+								line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+								line.To = Vector2.new(hrpPos.X, hrpPos.Y)
+								line.Visible = true
+							else
+								line.Visible = false
+							end
+						else
+							if line then line.Visible = false end
+						end
+
+						if not box then
+							box = {
+								Top = Drawing.new("Line"),
+								Bottom = Drawing.new("Line"),
+								Left = Drawing.new("Line"),
+								Right = Drawing.new("Line")
+							}
+							for _, l in pairs(box) do
+								l.Thickness = 1.5
+								l.Color = Color3.fromRGB(255, 255, 255)
+								l.Transparency = 0.8
+							end
+							boxEspTable[player] = box
+						end
+
+						if isBoxEspEnabled and char:FindFirstChild("HumanoidRootPart") and hum and hum.Health > 0 then
+							local hrp = char.HumanoidRootPart
+							local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+							if onScreen then
+								local size = Vector2.new(2500 / pos.Z, 4000 / pos.Z)
+								local topLeft = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+								local topRight = Vector2.new(pos.X + size.X / 2, pos.Y - size.Y / 2)
+								local bottomLeft = Vector2.new(pos.X - size.X / 2, pos.Y + size.Y / 2)
+								local bottomRight = Vector2.new(pos.X + size.X / 2, pos.Y + size.Y / 2)
+
+								box.Top.From = topLeft box.Top.To = topRight box.Top.Visible = true
+								box.Bottom.From = bottomLeft box.Bottom.To = bottomRight box.Bottom.Visible = true
+								box.Left.From = topLeft box.Left.To = bottomLeft box.Left.Visible = true
+								box.Right.From = topRight box.Right.To = bottomRight box.Right.Visible = true
+							else
+								for _, l in pairs(box) do l.Visible = false end
+							end
+						else
+							for _, l in pairs(box) do l.Visible = false end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	local function setAimbotState(state)
+		isAimbotEnabled = state
+		quickAimButton.Text = isAimbotEnabled and "Aim: ON" or "Aim: OFF"
+		quickAimStroke.Color = isAimbotEnabled and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(200, 200, 200)
+		if aimbotToggleWidget and aimbotToggleWidget.Set then
+			aimbotToggleWidget:Set(isAimbotEnabled)
+		end
+	end
+
+	local function toggleAimbot()
+		setAimbotState(not isAimbotEnabled)
+	end
+
+	local function updateLighting()
+		if isFullbrightEnabled then
+			Lighting.Brightness = 2
+			Lighting.ClockTime = 14
+			Lighting.GlobalShadows = false
+		else
+			Lighting.Brightness = defaultBrightness
+			Lighting.ClockTime = defaultClockTime
+			Lighting.GlobalShadows = true
+		end
+		Lighting.FogEnd = isNoFogEnabled and 100000 or defaultFogEnd
+	end
+
+	local function boostFps()
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 9e9
+		pcall(function() settings().Rendering.QualityLevel = 1 end)
+		pcall(function()
+			for _, v in ipairs(game:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.Material = Enum.Material.SmoothPlastic
+					v.Reflectance = 0
+				elseif v:IsA("Decal") or v:IsA("Texture") then
+					v:Destroy()
+				elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+					v.Enabled = false
+				end
+			end
+		end)
+		WindUI:Notify({ Title = "B Hub", Content = "Boost FPS Success!", Duration = 3, Icon = "zap" })
+	end
+
+	local function getAllConfigs()
+		local configs = {}
+		if isfolder and isfolder("BHubConfig") then
+			for _, file in ipairs(listfiles("BHubConfig")) do
+				if string.sub(file, -5) == ".json" then
+					local name = string.match(file, "BHubConfig[\\/](.+)%.json")
+					if name then table.insert(configs, name) end
+				end
+			end
+		end
+		if #configs == 0 then table.insert(configs, "None") end
+		return configs
+	end
+
+	local refreshConfigList
+	local function saveNamedConfig(name)
+		if not name or name == "" then name = "1" end
+		if makefolder and not isfolder("BHubConfig") then makefolder("BHubConfig") end
+		local configData = {
+			isAimbotEnabled = isAimbotEnabled,
+			fovRadius = fovRadius,
+			smoothSpeed = smoothSpeed,
+			targetPartName = targetPartName,
+			useTeamCheck = useTeamCheck,
+			useWallCheck = useWallCheck,
+			isFovVisible = isFovVisible,
+			isQuickAimVisible = isQuickAimVisible,
+			quickAimSize = quickAimSize,
+			fovColor = { R = fovColor.R, G = fovColor.G, B = fovColor.B },
+			isRedChamsEnabled = isRedChamsEnabled,
+			isNameEspEnabled = isNameEspEnabled,
+			isDistanceEspEnabled = isDistanceEspEnabled,
+			isTracersEnabled = isTracersEnabled,
+			isBoxEspEnabled = isBoxEspEnabled,
+			isFullbrightEnabled = isFullbrightEnabled,
+			isNoFogEnabled = isNoFogEnabled,
+			isSpeedEnabled = isSpeedEnabled,
+			customWalkSpeed = customWalkSpeed,
+			isJumpEnabled = isJumpEnabled,
+			customJumpPower = customJumpPower,
+			cameraFOV = camera.FieldOfView,
+			isInfJumpEnabled = isInfJumpEnabled,
+			isAntiAfkEnabled = isAntiAfkEnabled,
+			isAntiFlingEnabled = isAntiFlingEnabled,
+			isAntiStunEnabled = isAntiStunEnabled,
+			isFlyEnabled = isFlyEnabled,
+			flySpeed = flySpeed,
+			isNoclipEnabled = isNoclipEnabled
+		}
+		if writefile then
+			writefile("BHubConfig/" .. name .. ".json", HttpService:JSONEncode(configData))
+			if refreshConfigList then refreshConfigList() end
+			WindUI:Notify({ Title = "B Hub", Content = "Saved Config: " .. name, Duration = 3, Icon = "check" })
+		else
+			WindUI:Notify({ Title = "B Hub", Content = "Executor not supported!", Duration = 3, Icon = "x" })
+		end
+	end
+
+	local function loadNamedConfig(name)
+		if not name or name == "" or name == "None" then return end
+		local filePath = "BHubConfig/" .. name .. ".json"
+		if isfile and isfile(filePath) then
+			local raw = readfile(filePath)
+			local success, configData = pcall(function() return HttpService:JSONDecode(raw) end)
+			if success and configData then
+				isAimbotEnabled = configData.isAimbotEnabled or false
+				fovRadius = configData.fovRadius or fovRadius
+				smoothSpeed = math.clamp(configData.smoothSpeed or smoothSpeed, 0.01, 1)
+				targetPartName = configData.targetPartName or targetPartName
+				useTeamCheck = configData.useTeamCheck or false
+				useWallCheck = configData.useWallCheck or false
+				isFovVisible = configData.isFovVisible ~= false
+				isQuickAimVisible = configData.isQuickAimVisible or false
+				quickAimSize = configData.quickAimSize or 75
+				quickAimButton.Size = UDim2.new(0, quickAimSize, 0, quickAimSize)
+
+				if configData.fovColor then
+					fovColor = Color3.new(configData.fovColor.R, configData.fovColor.G, configData.fovColor.B)
+					if fovStroke then fovStroke.Color = fovColor end
+				end
+
+				isRedChamsEnabled = configData.isRedChamsEnabled or false
+				isNameEspEnabled = configData.isNameEspEnabled or false
+				isDistanceEspEnabled = configData.isDistanceEspEnabled or false
+				isTracersEnabled = configData.isTracersEnabled or false
+				isBoxEspEnabled = configData.isBoxEspEnabled or false
+				isFullbrightEnabled = configData.isFullbrightEnabled or false
+				isNoFogEnabled = configData.isNoFogEnabled or false
+
+				isSpeedEnabled = configData.isSpeedEnabled or false
+				customWalkSpeed = configData.customWalkSpeed or customWalkSpeed
+				isJumpEnabled = configData.isJumpEnabled or false
+				customJumpPower = configData.customJumpPower or customJumpPower
+				if configData.cameraFOV then camera.FieldOfView = configData.cameraFOV end
+				isInfJumpEnabled = configData.isInfJumpEnabled or false
+				isAntiAfkEnabled = configData.isAntiAfkEnabled or false
+				isAntiFlingEnabled = configData.isAntiFlingEnabled or false
+				isAntiStunEnabled = configData.isAntiStunEnabled or false
+				isFlyEnabled = configData.isFlyEnabled or false
+				flySpeed = configData.flySpeed or flySpeed
+				isNoclipEnabled = configData.isNoclipEnabled or false
+
+				setAimbotState(isAimbotEnabled)
+				if fovCircle then 
+					fovCircle.Visible = isFovVisible 
+					fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) 
+				end
+				if quickAimButton then quickAimButton.Visible = isQuickAimVisible end
+				updateLighting()
+
+				for widgetName, widget in pairs(uiWidgets) do
+					if widgetName == "AimbotToggle" then widget:Set(isAimbotEnabled)
+					elseif widgetName == "QuickAimToggle" then widget:Set(isQuickAimVisible)
+					elseif widgetName == "QuickAimSizeSlider" then widget:Set(quickAimSize)
+					elseif widgetName == "FovToggle" then widget:Set(isFovVisible)
+					elseif widgetName == "FovSlider" then widget:Set(fovRadius)
+					elseif widgetName == "SmoothSlider" then widget:Set(math.clamp(math.floor(smoothSpeed * 100), 1, 100))
+					elseif widgetName == "TeamCheckToggle" then widget:Set(useTeamCheck)
+					elseif widgetName == "WallCheckToggle" then widget:Set(useWallCheck)
+					elseif widgetName == "RedChamsToggle" then widget:Set(isRedChamsEnabled)
+					elseif widgetName == "NameEspToggle" then widget:Set(isNameEspEnabled)
+					elseif widgetName == "DistEspToggle" then widget:Set(isDistanceEspEnabled)
+					elseif widgetName == "TracersToggle" then widget:Set(isTracersEnabled)
+					elseif widgetName == "BoxEspToggle" then widget:Set(isBoxEspEnabled)
+					elseif widgetName == "FullbrightToggle" then widget:Set(isFullbrightEnabled)
+					elseif widgetName == "NoFogToggle" then widget:Set(isNoFogEnabled)
+					elseif widgetName == "SpeedToggle" then widget:Set(isSpeedEnabled)
+					elseif widgetName == "SpeedSlider" then widget:Set(customWalkSpeed)
+					elseif widgetName == "JumpToggle" then widget:Set(isJumpEnabled)
+					elseif widgetName == "JumpSlider" then widget:Set(customJumpPower)
+					elseif widgetName == "CameraFovSlider" then widget:Set(camera.FieldOfView)
+					elseif widgetName == "InfJumpToggle" then widget:Set(isInfJumpEnabled)
+					elseif widgetName == "AntiAfkToggle" then widget:Set(isAntiAfkEnabled)
+					elseif widgetName == "AntiFlingToggle" then widget:Set(isAntiFlingEnabled)
+					elseif widgetName == "AntiStunToggle" then widget:Set(isAntiStunEnabled)
+					elseif widgetName == "FlyToggle" then widget:Set(isFlyEnabled)
+					elseif widgetName == "FlySpeedSlider" then widget:Set(flySpeed)
+					elseif widgetName == "NoclipToggle" then widget:Set(isNoclipEnabled)
+					end
+				end
+				WindUI:Notify({ Title = "B Hub", Content = "Loaded Config: " .. name, Duration = 3, Icon = "download" })
+			end
+		else
+			WindUI:Notify({ Title = "B Hub", Content = "Config File Not Found!", Duration = 3, Icon = "x" })
+		end
+	end
+
+	local function deleteNamedConfig(name)
+		if not name or name == "" or name == "None" then return end
+		local filePath = "BHubConfig/" .. name .. ".json"
+		if isfile and isfile(filePath) then
+			delfile(filePath)
+			selectedConfigToLoad = "None"
+			if refreshConfigList then refreshConfigList() end
+			WindUI:Notify({ Title = "B Hub", Content = "Deleted Config: " .. name, Duration = 3, Icon = "trash" })
+		else
+			WindUI:Notify({ Title = "B Hub", Content = "Config File Not Found!", Duration = 3, Icon = "x" })
+		end
+	end
+
+	AimbotTab:Section({ Title = "Aimbot Settings" })
+	aimbotToggleWidget = AimbotTab:Toggle({ Title = "Enable Aimbot", Value = false, Callback = function(V) setAimbotState(V) end })
+	uiWidgets["AimbotToggle"] = aimbotToggleWidget
+
+	uiWidgets["QuickAimToggle"] = AimbotTab:Toggle({ Title = "Quick Aim Button", Value = false, Callback = function(V) isQuickAimVisible = V quickAimButton.Visible = V end })
+	uiWidgets["QuickAimSizeSlider"] = AimbotTab:Slider({ Title = "Quick Aim Button Size", Value = { Min = 40, Max = 150, Default = quickAimSize }, Callback = function(V) quickAimSize = V quickAimButton.Size = UDim2.new(0, quickAimSize, 0, quickAimSize) end })
+
+	uiWidgets["FovToggle"] = AimbotTab:Toggle({ Title = "Snow FOV", Value = true, Callback = function(V) isFovVisible = V if fovCircle then fovCircle.Visible = V end end })
+	uiWidgets["FovSlider"] = AimbotTab:Slider({ Title = "FOV Radius", Value = { Min = 10, Max = 500, Default = fovRadius }, Callback = function(V) fovRadius = V if fovCircle then fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) end end })
+	AimbotTab:Colorpicker({ Title = "FOV Color Customizer", Default = fovColor, Callback = function(C) fovColor = C if fovStroke then fovStroke.Color = C end end })
+	uiWidgets["SmoothSlider"] = AimbotTab:Slider({ Title = "Smooth Speed", Value = { Min = 1, Max = 100, Default = math.clamp(math.floor(smoothSpeed * 100), 1, 100) }, Callback = function(V) smoothSpeed = math.clamp(V / 100, 0.01, 1) end })
+	AimbotTab:Dropdown({ Title = "Target Part", Values = {"head", "body"}, Value = "head", Callback = function(O) targetPartName = (O == "head") and "Head" or "Body" end })
+	uiWidgets["TeamCheckToggle"] = AimbotTab:Toggle({ Title = "Team Check", Value = false, Callback = function(V) useTeamCheck = V end })
+	uiWidgets["WallCheckToggle"] = AimbotTab:Toggle({ Title = "Wall Check", Value = false, Callback = function(V) useWallCheck = V end })
+
+	VisualsTab:Section({ Title = "ESP & Visuals Options" })
+	uiWidgets["RedChamsToggle"] = VisualsTab:Toggle({ Title = "Red Chams (X-Ray)", Value = false, Callback = function(Val) isRedChamsEnabled = Val end })
+	uiWidgets["NameEspToggle"] = VisualsTab:Toggle({ Title = "Name ESP", Value = false, Callback = function(Val) isNameEspEnabled = Val end })
+	uiWidgets["DistEspToggle"] = VisualsTab:Toggle({ Title = "Distance ESP", Value = false, Callback = function(Val) isDistanceEspEnabled = Val end })
+	uiWidgets["TracersToggle"] = VisualsTab:Toggle({ Title = "Tracers (Lines)", Value = false, Callback = function(Val) 
+		isTracersEnabled = Val 
+		if not Val then
+			for _, line in pairs(tracersTable) do pcall(function() line.Visible = false end) end
+		end
+	end })
+	uiWidgets["BoxEspToggle"] = VisualsTab:Toggle({ Title = "Box ESP", Value = false, Callback = function(Val)
+		isBoxEspEnabled = Val
+		if not Val then
+			for _, box in pairs(boxEspTable) do
+				for _, line in pairs(box) do pcall(function() line.Visible = false end) end
+			end
+		end
+	end })
+
+	VisualsTab:Section({ Title = "World & Lighting" })
+	uiWidgets["FullbrightToggle"] = VisualsTab:Toggle({ Title = "Fullbright", Value = false, Callback = function(V) isFullbrightEnabled = V updateLighting() end })
+	uiWidgets["NoFogToggle"] = VisualsTab:Toggle({ Title = "Remove Fog", Value = false, Callback = function(V) isNoFogEnabled = V updateLighting() end })
+
+	PlayerTab:Section({ Title = "Movement & Utilities" })
+	uiWidgets["SpeedToggle"] = PlayerTab:Toggle({ Title = "Enable WalkSpeed", Value = false, Callback = function(V) isSpeedEnabled = V end })
+	uiWidgets["SpeedSlider"] = PlayerTab:Slider({ Title = "WalkSpeed", Value = { Min = 16, Max = 200, Default = 16 }, Callback = function(V) customWalkSpeed = V end })
+	uiWidgets["JumpToggle"] = PlayerTab:Toggle({ Title = "Enable JumpPower", Value = false, Callback = function(V) isJumpEnabled = V end })
+	uiWidgets["JumpSlider"] = PlayerTab:Slider({ Title = "JumpPower", Value = { Min = 50, Max = 300, Default = 50 }, Callback = function(V) customJumpPower = V end })
+	uiWidgets["CameraFovSlider"] = PlayerTab:Slider({ Title = "Camera FOV Changer", Value = { Min = 70, Max = 120, Default = 70 }, Callback = function(V) camera.FieldOfView = V end })
+	uiWidgets["InfJumpToggle"] = PlayerTab:Toggle({ Title = "Infinite Jump", Value = false, Callback = function(V) isInfJumpEnabled = V end })
+	UserInputService.JumpRequest:Connect(function()
+		if isInfJumpEnabled then
+			local char = localPlayer.Character
+			if char and char:FindFirstChild("Humanoid") then char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+		end
+	end)
+	uiWidgets["AntiAfkToggle"] = PlayerTab:Toggle({
+		Title = "Anti-AFK",
+		Value = false,
+		Callback = function(Value)
+			isAntiAfkEnabled = Value
+			if isAntiAfkEnabled then
+				antiAfkConnection = localPlayer.Idled:Connect(function()
+					VirtualUser:Button2Down(Vector2.new(0, 0), camera.CFrame)
+					task.wait(1)
+					VirtualUser:Button2Up(Vector2.new(0, 0), camera.CFrame)
+				end)
+			else
+				if antiAfkConnection then antiAfkConnection:Disconnect() antiAfkConnection = nil end
+			end
+		end,
+	})
+
+	PlayerTab:Section({ Title = "Protections" })
+	uiWidgets["AntiFlingToggle"] = PlayerTab:Toggle({
+		Title = "Anti-Fling",
+		Value = false,
+		Callback = function(Value)
+			isAntiFlingEnabled = Value
+			if isAntiFlingEnabled then
+				antiFlingConnection = RunService.Stepped:Connect(function()
+					local char = localPlayer.Character
+					if char then
+						local hrp = char:FindFirstChild("HumanoidRootPart")
+						if hrp then
+							if hrp.AssemblyLinearVelocity.Magnitude > 300 or hrp.AssemblyAngularVelocity.Magnitude > 200 then
+								hrp.AssemblyLinearVelocity = Vector3.zero
+								hrp.AssemblyAngularVelocity = Vector3.zero
+								hrp.CFrame = hrp.CFrame
+							end
+						end
+					end
+				end)
+			else
+				if antiFlingConnection then antiFlingConnection:Disconnect() antiFlingConnection = nil end
+			end
+		end,
+	})
+
+	uiWidgets["AntiStunToggle"] = PlayerTab:Toggle({
+		Title = "Anti-Stun",
+		Value = false,
+		Callback = function(Value)
+			isAntiStunEnabled = Value
+			if isAntiStunEnabled then
+				antiStunConnection = RunService.Heartbeat:Connect(function()
+					local char = localPlayer.Character
+					if char then
+						local hum = char:FindFirstChildOfClass("Humanoid")
+						if hum then
+							if hum.PlatformStand then hum.PlatformStand = false end
+							local currentState = hum:GetState()
+							if currentState == Enum.HumanoidStateType.Physics or currentState == Enum.HumanoidStateType.Ragdoll or currentState == Enum.HumanoidStateType.FallingDown then
+								hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+							end
+						end
+					end
+				end)
+			else
+				if antiStunConnection then antiStunConnection:Disconnect() antiStunConnection = nil end
+			end
+		end,
+	})
+
+	PlayerTab:Section({ Title = "Abilities" })
+	uiWidgets["FlyToggle"] = PlayerTab:Toggle({ Title = "Fly", Value = false, Callback = function(V) isFlyEnabled = V local c = localPlayer.Character if c then if V then startFlying(c) else stopFlying(c) end end end })
+	uiWidgets["FlySpeedSlider"] = PlayerTab:Slider({ Title = "Fly Speed", Value = { Min = 10, Max = 200, Default = 50, Step = 5 }, Callback = function(V) flySpeed = V end })
+	uiWidgets["NoclipToggle"] = PlayerTab:Toggle({ Title = "Noclip", Value = false, Callback = function(V)
+		isNoclipEnabled = V
+		if V then
+			noclipConnection = RunService.Stepped:Connect(function()
+				local c = localPlayer.Character
+				if c then
+					for _, p in ipairs(c:GetDescendants()) do
+						if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+					end
+				end
+			end)
+		else
+			if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+		end
+	end })
+
+	SettingsTab:Section({ Title = "Performance & Display" })
+	SettingsTab:Button({ Title = "Boost FPS", Callback = function() boostFps() end })
+	SettingsTab:Toggle({ Title = "Snow FPS & Ping Display", Value = false, Callback = function(V) isFpsPingVisible = V fpsPingLabel.Visible = V end })
+
+	SettingsTab:Section({ Title = "Config Manager" })
+	SettingsTab:Input({
+		Title = "Config Name",
+		Value = "",
+		Placeholder = "Config Name...",
+		Callback = function(Text) currentConfigInputName = Text end,
+	})
+	SettingsTab:Button({
+		Title = "Save Config",
+		Callback = function() saveNamedConfig(currentConfigInputName) end,
+	})
+
+	local currentConfigs = getAllConfigs()
+	selectedConfigToLoad = "None"
+	configDropdownWidget = SettingsTab:Dropdown({
+		Title = "Select Config File",
+		Values = currentConfigs,
+		Value = "None",
+		Callback = function(Option) selectedConfigToLoad = Option end,
+	})
+
+	refreshConfigList = function()
+		local updatedConfigs = getAllConfigs()
+		if configDropdownWidget then
+			if configDropdownWidget.Refresh then
+				configDropdownWidget:Refresh(updatedConfigs, "None")
+			elseif configDropdownWidget.SetValues then
+				configDropdownWidget:SetValues(updatedConfigs)
+				if configDropdownWidget.Set then configDropdownWidget:Set("None") end
+			end
+		end
+	end
+
+	SettingsTab:Button({
+		Title = "Refresh Config List",
+		Callback = function()
+			refreshConfigList()
+			WindUI:Notify({ Title = "B Hub", Content = "Refreshed Config List!", Duration = 2, Icon = "refresh-cw" })
+		end,
+	})
+	SettingsTab:Button({
+		Title = "Load Selected Config",
+		Callback = function() loadNamedConfig(selectedConfigToLoad) end,
+	})
+	SettingsTab:Button({
+		Title = "Delete Selected Config",
+		Callback = function() deleteNamedConfig(selectedConfigToLoad) end,
+	})
+
+	local function enableDragging(buttonObject, onSingleClick)
+		local dragging, dragInput, dragStart, startPos
+		local isDragging = false
+		local threshold = 5
+		buttonObject.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = buttonObject.Position
+				isDragging = false
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		buttonObject.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if input == dragInput and dragging then
+				local delta = input.Position - dragStart
+				if delta.Magnitude > threshold then isDragging = true end
+				buttonObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+		buttonObject.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if not isDragging and onSingleClick then onSingleClick() end
+			end
+		end)
+	end
+	enableDragging(quickAimButton, function() toggleAimbot() end)
+	enableDragging(fpsPingLabel, nil)
+
+	RunService.RenderStepped:Connect(function()
+		updateAimbot()
+		updateESP()
+		if isFullbrightEnabled or isNoFogEnabled then updateLighting() end
+		if isFpsPingVisible then
+			frameCount = frameCount + 1
+			local now = tick()
+			if now - lastFpsUpdate >= 1 then
+				currentFps = math.floor(frameCount / (now - lastFpsUpdate))
+				frameCount = 0
+				lastFpsUpdate = now
+				local pingVal = 0
+				pcall(function() pingVal = math.floor(localPlayer:GetNetworkPing() * 1000) end)
+				fpsPingLabel.Text = string.format("FPS: %d | Ping: %d ms", currentFps, pingVal)
+			end
+		end
+	end)
+
+	RunService.Heartbeat:Connect(function()
+		local character = localPlayer.Character
+		if character and character:FindFirstChild("Humanoid") then
+			local humanoid = character.Humanoid
+			if isSpeedEnabled and humanoid.WalkSpeed ~= customWalkSpeed then
+				humanoid.WalkSpeed = customWalkSpeed
+			elseif not isSpeedEnabled and humanoid.WalkSpeed ~= defaultWalkSpeed then
+				humanoid.WalkSpeed = defaultWalkSpeed
+			end
+			if isJumpEnabled and humanoid.JumpPower ~= customJumpPower then
+				humanoid.JumpPower = customJumpPower
+			elseif not isJumpEnabled and humanoid.JumpPower ~= defaultJumpPower then
+				humanoid.JumpPower = defaultJumpPower
+			end
+		end
+	end)
+
+	localPlayer.CharacterAdded:Connect(function(character)
+		isFlyEnabled = false
+		stopFlying(character)
+	end)
+
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+	end)
 end
-
-local function setAimbotState(state)
-    isAimbotEnabled = state
-    quickAimButton.Text = isAimbotEnabled and "Aim: ON" or "Aim: OFF"
-    quickAimStroke.Color = isAimbotEnabled and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(200, 200, 200)
-    if aimbotToggleWidget and aimbotToggleWidget.Set then
-        aimbotToggleWidget:Set(isAimbotEnabled)
-    end
-end
-
-local function toggleAimbot()
-    setAimbotState(not isAimbotEnabled)
-end
-
-local function updateLighting()
-    if isFullbrightEnabled then
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-    else
-        Lighting.Brightness = defaultBrightness
-        Lighting.ClockTime = defaultClockTime
-        Lighting.GlobalShadows = true
-    end
-    Lighting.FogEnd = isNoFogEnabled and 100000 or defaultFogEnd
-end
-
-local function boostFps()
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    pcall(function() settings().Rendering.QualityLevel = 1 end)
-    pcall(function()
-        for _, v in ipairs(game:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.SmoothPlastic
-                v.Reflectance = 0
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v:Destroy()
-            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                v.Enabled = false
-            end
-        end
-    end)
-    WindUI:Notify({ Title = "B Hub", Content = "Boost FPS Success!", Duration = 3, Icon = "zap" })
-end
-
-local function getAllConfigs()
-    local configs = {}
-    if isfolder and isfolder("BHubConfig") then
-        for _, file in ipairs(listfiles("BHubConfig")) do
-            if string.sub(file, -5) == ".json" then
-                local name = string.match(file, "BHubConfig[\\/](.+)%.json")
-                if name then table.insert(configs, name) end
-            end
-        end
-    end
-    if #configs == 0 then table.insert(configs, "None") end
-    return configs
-end
-
-local refreshConfigList
-local function saveNamedConfig(name)
-    if not name or name == "" then name = "1" end
-    if makefolder and not isfolder("BHubConfig") then makefolder("BHubConfig") end
-    local configData = {
-        isAimbotEnabled = isAimbotEnabled,
-        fovRadius = fovRadius,
-        smoothSpeed = smoothSpeed,
-        targetPartName = targetPartName,
-        useTeamCheck = useTeamCheck,
-        useWallCheck = useWallCheck,
-        isFovVisible = isFovVisible,
-        isQuickAimVisible = isQuickAimVisible,
-        quickAimSize = quickAimSize,
-        fovColor = { R = fovColor.R, G = fovColor.G, B = fovColor.B },
-        isRedChamsEnabled = isRedChamsEnabled,
-        isNameEspEnabled = isNameEspEnabled,
-        isDistanceEspEnabled = isDistanceEspEnabled,
-        isTracersEnabled = isTracersEnabled,
-        isBoxEspEnabled = isBoxEspEnabled,
-        isFullbrightEnabled = isFullbrightEnabled,
-        isNoFogEnabled = isNoFogEnabled,
-        isSpeedEnabled = isSpeedEnabled,
-        customWalkSpeed = customWalkSpeed,
-        isJumpEnabled = isJumpEnabled,
-        customJumpPower = customJumpPower,
-        cameraFOV = camera.FieldOfView,
-        isInfJumpEnabled = isInfJumpEnabled,
-        isAntiAfkEnabled = isAntiAfkEnabled,
-        isAntiFlingEnabled = isAntiFlingEnabled,
-        isAntiStunEnabled = isAntiStunEnabled,
-        isFlyEnabled = isFlyEnabled,
-        flySpeed = flySpeed,
-        isNoclipEnabled = isNoclipEnabled
-    }
-    if writefile then
-        writefile("BHubConfig/" .. name .. ".json", HttpService:JSONEncode(configData))
-        if refreshConfigList then refreshConfigList() end
-        WindUI:Notify({ Title = "B Hub", Content = "Saved Config: " .. name, Duration = 3, Icon = "check" })
-    else
-        WindUI:Notify({ Title = "B Hub", Content = "Executor not supported!", Duration = 3, Icon = "x" })
-    end
-end
-
-local function loadNamedConfig(name)
-    if not name or name == "" or name == "None" then return end
-    local filePath = "BHubConfig/" .. name .. ".json"
-    if isfile and isfile(filePath) then
-        local raw = readfile(filePath)
-        local success, configData = pcall(function() return HttpService:JSONDecode(raw) end)
-        if success and configData then
-            isAimbotEnabled = configData.isAimbotEnabled or false
-            fovRadius = configData.fovRadius or fovRadius
-            smoothSpeed = math.clamp(configData.smoothSpeed or smoothSpeed, 0.01, 1)
-            targetPartName = configData.targetPartName or targetPartName
-            useTeamCheck = configData.useTeamCheck or false
-            useWallCheck = configData.useWallCheck or false
-            isFovVisible = configData.isFovVisible ~= false
-            isQuickAimVisible = configData.isQuickAimVisible or false
-            quickAimSize = configData.quickAimSize or 75
-            quickAimButton.Size = UDim2.new(0, quickAimSize, 0, quickAimSize)
-
-            if configData.fovColor then
-                fovColor = Color3.new(configData.fovColor.R, configData.fovColor.G, configData.fovColor.B)
-                if fovStroke then fovStroke.Color = fovColor end
-            end
-
-            isRedChamsEnabled = configData.isRedChamsEnabled or false
-            isNameEspEnabled = configData.isNameEspEnabled or false
-            isDistanceEspEnabled = configData.isDistanceEspEnabled or false
-            isTracersEnabled = configData.isTracersEnabled or false
-            isBoxEspEnabled = configData.isBoxEspEnabled or false
-            isFullbrightEnabled = configData.isFullbrightEnabled or false
-            isNoFogEnabled = configData.isNoFogEnabled or false
-
-            isSpeedEnabled = configData.isSpeedEnabled or false
-            customWalkSpeed = configData.customWalkSpeed or customWalkSpeed
-            isJumpEnabled = configData.isJumpEnabled or false
-            customJumpPower = configData.customJumpPower or customJumpPower
-            if configData.cameraFOV then camera.FieldOfView = configData.cameraFOV end
-            isInfJumpEnabled = configData.isInfJumpEnabled or false
-            isAntiAfkEnabled = configData.isAntiAfkEnabled or false
-            isAntiFlingEnabled = configData.isAntiFlingEnabled or false
-            isAntiStunEnabled = configData.isAntiStunEnabled or false
-            isFlyEnabled = configData.isFlyEnabled or false
-            flySpeed = configData.flySpeed or flySpeed
-            isNoclipEnabled = configData.isNoclipEnabled or false
-
-            setAimbotState(isAimbotEnabled)
-            if fovCircle then 
-                fovCircle.Visible = isFovVisible 
-                fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) 
-            end
-            if quickAimButton then quickAimButton.Visible = isQuickAimVisible end
-            updateLighting()
-
-            for widgetName, widget in pairs(uiWidgets) do
-                if widgetName == "AimbotToggle" then widget:Set(isAimbotEnabled)
-                elseif widgetName == "QuickAimToggle" then widget:Set(isQuickAimVisible)
-                elseif widgetName == "QuickAimSizeSlider" then widget:Set(quickAimSize)
-                elseif widgetName == "FovToggle" then widget:Set(isFovVisible)
-                elseif widgetName == "FovSlider" then widget:Set(fovRadius)
-                elseif widgetName == "SmoothSlider" then widget:Set(math.clamp(math.floor(smoothSpeed * 100), 1, 100))
-                elseif widgetName == "TeamCheckToggle" then widget:Set(useTeamCheck)
-                elseif widgetName == "WallCheckToggle" then widget:Set(useWallCheck)
-                elseif widgetName == "RedChamsToggle" then widget:Set(isRedChamsEnabled)
-                elseif widgetName == "NameEspToggle" then widget:Set(isNameEspEnabled)
-                elseif widgetName == "DistEspToggle" then widget:Set(isDistanceEspEnabled)
-                elseif widgetName == "TracersToggle" then widget:Set(isTracersEnabled)
-                elseif widgetName == "BoxEspToggle" then widget:Set(isBoxEspEnabled)
-                elseif widgetName == "FullbrightToggle" then widget:Set(isFullbrightEnabled)
-                elseif widgetName == "NoFogToggle" then widget:Set(isNoFogEnabled)
-                elseif widgetName == "SpeedToggle" then widget:Set(isSpeedEnabled)
-                elseif widgetName == "SpeedSlider" then widget:Set(customWalkSpeed)
-                elseif widgetName == "JumpToggle" then widget:Set(isJumpEnabled)
-                elseif widgetName == "JumpSlider" then widget:Set(customJumpPower)
-                elseif widgetName == "CameraFovSlider" then widget:Set(camera.FieldOfView)
-                elseif widgetName == "InfJumpToggle" then widget:Set(isInfJumpEnabled)
-                elseif widgetName == "AntiAfkToggle" then widget:Set(isAntiAfkEnabled)
-                elseif widgetName == "AntiFlingToggle" then widget:Set(isAntiFlingEnabled)
-                elseif widgetName == "AntiStunToggle" then widget:Set(isAntiStunEnabled)
-                elseif widgetName == "FlyToggle" then widget:Set(isFlyEnabled)
-                elseif widgetName == "FlySpeedSlider" then widget:Set(flySpeed)
-                elseif widgetName == "NoclipToggle" then widget:Set(isNoclipEnabled)
-                end
-            end
-            WindUI:Notify({ Title = "B Hub", Content = "Loaded Config: " .. name, Duration = 3, Icon = "download" })
-        end
-    else
-        WindUI:Notify({ Title = "B Hub", Content = "Config File Not Found!", Duration = 3, Icon = "x" })
-    end
-end
-
-local function deleteNamedConfig(name)
-    if not name or name == "" or name == "None" then return end
-    local filePath = "BHubConfig/" .. name .. ".json"
-    if isfile and isfile(filePath) then
-        delfile(filePath)
-        selectedConfigToLoad = "None"
-        if refreshConfigList then refreshConfigList() end
-        WindUI:Notify({ Title = "B Hub", Content = "Deleted Config: " .. name, Duration = 3, Icon = "trash" })
-    else
-        WindUI:Notify({ Title = "B Hub", Content = "Config File Not Found!", Duration = 3, Icon = "x" })
-    end
-end
-
-AimbotTab:Section({ Title = "Aimbot Settings" })
-aimbotToggleWidget = AimbotTab:Toggle({ Title = "Enable Aimbot", Value = false, Callback = function(V) setAimbotState(V) end })
-uiWidgets["AimbotToggle"] = aimbotToggleWidget
-
-uiWidgets["QuickAimToggle"] = AimbotTab:Toggle({ Title = "Quick Aim Button", Value = false, Callback = function(V) isQuickAimVisible = V quickAimButton.Visible = V end })
-uiWidgets["QuickAimSizeSlider"] = AimbotTab:Slider({ Title = "Quick Aim Button Size", Value = { Min = 40, Max = 150, Default = quickAimSize }, Callback = function(V) quickAimSize = V quickAimButton.Size = UDim2.new(0, quickAimSize, 0, quickAimSize) end })
-
-uiWidgets["FovToggle"] = AimbotTab:Toggle({ Title = "Snow FOV", Value = true, Callback = function(V) isFovVisible = V if fovCircle then fovCircle.Visible = V end end })
-uiWidgets["FovSlider"] = AimbotTab:Slider({ Title = "FOV Radius", Value = { Min = 10, Max = 500, Default = fovRadius }, Callback = function(V) fovRadius = V if fovCircle then fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) end end })
-AimbotTab:Colorpicker({ Title = "FOV Color Customizer", Default = fovColor, Callback = function(C) fovColor = C if fovStroke then fovStroke.Color = C end end })
-uiWidgets["SmoothSlider"] = AimbotTab:Slider({ Title = "Smooth Speed", Value = { Min = 1, Max = 100, Default = math.clamp(math.floor(smoothSpeed * 100), 1, 100) }, Callback = function(V) smoothSpeed = math.clamp(V / 100, 0.01, 1) end })
-AimbotTab:Dropdown({ Title = "Target Part", Values = {"head", "body"}, Value = "head", Callback = function(O) targetPartName = (O == "head") and "Head" or "Body" end })
-uiWidgets["TeamCheckToggle"] = AimbotTab:Toggle({ Title = "Team Check", Value = false, Callback = function(V) useTeamCheck = V end })
-uiWidgets["WallCheckToggle"] = AimbotTab:Toggle({ Title = "Wall Check", Value = false, Callback = function(V) useWallCheck = V end })
-
-VisualsTab:Section({ Title = "ESP & Visuals Options" })
-uiWidgets["RedChamsToggle"] = VisualsTab:Toggle({ Title = "Red Chams (X-Ray)", Value = false, Callback = function(Val) isRedChamsEnabled = Val end })
-uiWidgets["NameEspToggle"] = VisualsTab:Toggle({ Title = "Name ESP", Value = false, Callback = function(Val) isNameEspEnabled = Val end })
-uiWidgets["DistEspToggle"] = VisualsTab:Toggle({ Title = "Distance ESP", Value = false, Callback = function(Val) isDistanceEspEnabled = Val end })
-uiWidgets["TracersToggle"] = VisualsTab:Toggle({ Title = "Tracers (Lines)", Value = false, Callback = function(Val) 
-    isTracersEnabled = Val 
-    if not Val then
-        for _, line in pairs(tracersTable) do pcall(function() line.Visible = false end) end
-    end
-end })
-uiWidgets["BoxEspToggle"] = VisualsTab:Toggle({ Title = "Box ESP", Value = false, Callback = function(Val)
-    isBoxEspEnabled = Val
-    if not Val then
-        for _, box in pairs(boxEspTable) do
-            for _, line in pairs(box) do pcall(function() line.Visible = false end) end
-        end
-    end
-end })
-
-VisualsTab:Section({ Title = "World & Lighting" })
-uiWidgets["FullbrightToggle"] = VisualsTab:Toggle({ Title = "Fullbright", Value = false, Callback = function(V) isFullbrightEnabled = V updateLighting() end })
-uiWidgets["NoFogToggle"] = VisualsTab:Toggle({ Title = "Remove Fog", Value = false, Callback = function(V) isNoFogEnabled = V updateLighting() end })
-
-PlayerTab:Section({ Title = "Movement & Utilities" })
-uiWidgets["SpeedToggle"] = PlayerTab:Toggle({ Title = "Enable WalkSpeed", Value = false, Callback = function(V) isSpeedEnabled = V end })
-uiWidgets["SpeedSlider"] = PlayerTab:Slider({ Title = "WalkSpeed", Value = { Min = 16, Max = 200, Default = 16 }, Callback = function(V) customWalkSpeed = V end })
-uiWidgets["JumpToggle"] = PlayerTab:Toggle({ Title = "Enable JumpPower", Value = false, Callback = function(V) isJumpEnabled = V end })
-uiWidgets["JumpSlider"] = PlayerTab:Slider({ Title = "JumpPower", Value = { Min = 50, Max = 300, Default = 50 }, Callback = function(V) customJumpPower = V end })
-uiWidgets["CameraFovSlider"] = PlayerTab:Slider({ Title = "Camera FOV Changer", Value = { Min = 70, Max = 120, Default = 70 }, Callback = function(V) camera.FieldOfView = V end })
-uiWidgets["InfJumpToggle"] = PlayerTab:Toggle({ Title = "Infinite Jump", Value = false, Callback = function(V) isInfJumpEnabled = V end })
-UserInputService.JumpRequest:Connect(function()
-    if isInfJumpEnabled then
-        local char = localPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end
-end)
-uiWidgets["AntiAfkToggle"] = PlayerTab:Toggle({
-    Title = "Anti-AFK",
-    Value = false,
-    Callback = function(Value)
-        isAntiAfkEnabled = Value
-        if isAntiAfkEnabled then
-            antiAfkConnection = localPlayer.Idled:Connect(function()
-                VirtualUser:Button2Down(Vector2.new(0, 0), camera.CFrame)
-                task.wait(1)
-                VirtualUser:Button2Up(Vector2.new(0, 0), camera.CFrame)
-            end)
-        else
-            if antiAfkConnection then antiAfkConnection:Disconnect() antiAfkConnection = nil end
-        end
-    end,
-})
-
-PlayerTab:Section({ Title = "Protections" })
-uiWidgets["AntiFlingToggle"] = PlayerTab:Toggle({
-    Title = "Anti-Fling",
-    Value = false,
-    Callback = function(Value)
-        isAntiFlingEnabled = Value
-        if isAntiFlingEnabled then
-            antiFlingConnection = RunService.Stepped:Connect(function()
-                local char = localPlayer.Character
-                if char then
-                    local hrp = char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        if hrp.AssemblyLinearVelocity.Magnitude > 300 or hrp.AssemblyAngularVelocity.Magnitude > 200 then
-                            hrp.AssemblyLinearVelocity = Vector3.zero
-                            hrp.AssemblyAngularVelocity = Vector3.zero
-                            hrp.CFrame = hrp.CFrame
-                        end
-                    end
-                end
-            end)
-        else
-            if antiFlingConnection then antiFlingConnection:Disconnect() antiFlingConnection = nil end
-        end
-    end,
-})
-
-uiWidgets["AntiStunToggle"] = PlayerTab:Toggle({
-    Title = "Anti-Stun",
-    Value = false,
-    Callback = function(Value)
-        isAntiStunEnabled = Value
-        if isAntiStunEnabled then
-            antiStunConnection = RunService.Heartbeat:Connect(function()
-                local char = localPlayer.Character
-                if char then
-                    local hum = char:FindFirstChildOfClass("Humanoid")
-                    if hum then
-                        if hum.PlatformStand then hum.PlatformStand = false end
-                        local currentState = hum:GetState()
-                        if currentState == Enum.HumanoidStateType.Physics or currentState == Enum.HumanoidStateType.Ragdoll or currentState == Enum.HumanoidStateType.FallingDown then
-                            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-                        end
-                    end
-                end
-            end)
-        else
-            if antiStunConnection then antiStunConnection:Disconnect() antiStunConnection = nil end
-        end
-    end,
-})
-
-PlayerTab:Section({ Title = "Abilities" })
-uiWidgets["FlyToggle"] = PlayerTab:Toggle({ Title = "Fly", Value = false, Callback = function(V) isFlyEnabled = V local c = localPlayer.Character if c then if V then startFlying(c) else stopFlying(c) end end end })
-uiWidgets["FlySpeedSlider"] = PlayerTab:Slider({ Title = "Fly Speed", Value = { Min = 10, Max = 200, Default = 50, Step = 5 }, Callback = function(V) flySpeed = V end })
-uiWidgets["NoclipToggle"] = PlayerTab:Toggle({ Title = "Noclip", Value = false, Callback = function(V)
-    isNoclipEnabled = V
-    if V then
-        noclipConnection = RunService.Stepped:Connect(function()
-            local c = localPlayer.Character
-            if c then
-                for _, p in ipairs(c:GetDescendants()) do
-                    if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
-                end
-            end
-        end)
-    else
-        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
-    end
-end })
-
-SettingsTab:Section({ Title = "Performance & Display" })
-SettingsTab:Button({ Title = "Boost FPS", Callback = function() boostFps() end })
-SettingsTab:Toggle({ Title = "Snow FPS & Ping Display", Value = false, Callback = function(V) isFpsPingVisible = V fpsPingLabel.Visible = V end })
-
-SettingsTab:Section({ Title = "Config Manager" })
-SettingsTab:Input({
-    Title = "Config Name",
-    Value = "",
-    Placeholder = "Config Name...",
-    Callback = function(Text) currentConfigInputName = Text end,
-})
-SettingsTab:Button({
-    Title = "Save Config",
-    Callback = function() saveNamedConfig(currentConfigInputName) end,
-})
-
-local currentConfigs = getAllConfigs()
-selectedConfigToLoad = "None"
-configDropdownWidget = SettingsTab:Dropdown({
-    Title = "Select Config File",
-    Values = currentConfigs,
-    Value = "None",
-    Callback = function(Option) selectedConfigToLoad = Option end,
-})
-
-refreshConfigList = function()
-    local updatedConfigs = getAllConfigs()
-    if configDropdownWidget then
-        if configDropdownWidget.Refresh then
-            configDropdownWidget:Refresh(updatedConfigs, "None")
-        elseif configDropdownWidget.SetValues then
-            configDropdownWidget:SetValues(updatedConfigs)
-            if configDropdownWidget.Set then configDropdownWidget:Set("None") end
-        end
-    end
-end
-
-SettingsTab:Button({
-    Title = "Refresh Config List",
-    Callback = function()
-        refreshConfigList()
-        WindUI:Notify({ Title = "B Hub", Content = "Refreshed Config List!", Duration = 2, Icon = "refresh-cw" })
-    end,
-})
-SettingsTab:Button({
-    Title = "Load Selected Config",
-    Callback = function() loadNamedConfig(selectedConfigToLoad) end,
-})
-SettingsTab:Button({
-    Title = "Delete Selected Config",
-    Callback = function() deleteNamedConfig(selectedConfigToLoad) end,
-})
-
-local function enableDragging(buttonObject, onSingleClick)
-    local dragging, dragInput, dragStart, startPos
-    local isDragging = false
-    local threshold = 5
-    buttonObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = buttonObject.Position
-            isDragging = false
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    buttonObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            if delta.Magnitude > threshold then isDragging = true end
-            buttonObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    buttonObject.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if not isDragging and onSingleClick then onSingleClick() end
-        end
-    end)
-end
-enableDragging(quickAimButton, function() toggleAimbot() end)
-enableDragging(fpsPingLabel, nil)
-
-RunService.RenderStepped:Connect(function()
-    updateAimbot()
-    updateESP()
-    if isFullbrightEnabled or isNoFogEnabled then updateLighting() end
-    if isFpsPingVisible then
-        frameCount = frameCount + 1
-        local now = tick()
-        if now - lastFpsUpdate >= 1 then
-            currentFps = math.floor(frameCount / (now - lastFpsUpdate))
-            frameCount = 0
-            lastFpsUpdate = now
-            local pingVal = 0
-            pcall(function() pingVal = math.floor(localPlayer:GetNetworkPing() * 1000) end)
-            fpsPingLabel.Text = string.format("FPS: %d | Ping: %d ms", currentFps, pingVal)
-        end
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    local character = localPlayer.Character
-    if character and character:FindFirstChild("Humanoid") then
-        local humanoid = character.Humanoid
-        if isSpeedEnabled and humanoid.WalkSpeed ~= customWalkSpeed then
-            humanoid.WalkSpeed = customWalkSpeed
-        elseif not isSpeedEnabled and humanoid.WalkSpeed ~= defaultWalkSpeed then
-            humanoid.WalkSpeed = defaultWalkSpeed
-        end
-        if isJumpEnabled and humanoid.JumpPower ~= customJumpPower then
-            humanoid.JumpPower = customJumpPower
-        elseif not isJumpEnabled and humanoid.JumpPower ~= defaultJumpPower then
-            humanoid.JumpPower = defaultJumpPower
-        end
-    end
-end)
-
-localPlayer.CharacterAdded:Connect(function(character)
-    isFlyEnabled = false
-    stopFlying(character)
-end)
-
-camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-    fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
-end)
