@@ -4,9 +4,6 @@ local Players = game:GetService("Players")
 
 local Player = Players.LocalPlayer
 
--- =========================================
--- ส่วนระบบยืนยันคีย์ (Key System UI)
--- =========================================
 local KeyScreenGui = Instance.new("ScreenGui")
 KeyScreenGui.Name = "BHubKeySystem"
 KeyScreenGui.ResetOnSpawn = false
@@ -75,19 +72,16 @@ StatusLabel.TextColor3 = Color3.fromRGB(255, 55, 85)
 StatusLabel.Font = Enum.Font.GothamMedium
 StatusLabel.TextSize = 11
 
--- กำหนดคีย์ที่ถูกต้องตรงนี้ (คุณสามารถเปลี่ยนข้อความคีย์ได้ตามต้องการ)
 local CORRECT_KEY = "BHub2026"
 
--- ปุ่มคัดลอกลิงก์รับคีย์ (ถ้ามี)
 GetKeyBtn.MouseButton1Click:Connect(function()
 	if setclipboard then
-		setclipboard "BHub2026" -- เปลี่ยนเป็นลิงก์รับคีย์ของคุณ
+		setclipboard "BHub2026"
 		StatusLabel.TextColor3 = Color3.fromRGB(0, 210, 255)
 		StatusLabel.Text = "คัดลอกลิงก์รับคีย์ลงคลิปบอร์ดแล้ว!"
 	end
 end)
 
--- ฟังก์ชันเมื่อกดปุ่มยืนยันคีย์
 local isKeyVerified = false
 SubmitBtn.MouseButton1Click:Connect(function()
 	if KeyTextBox.Text == CORRECT_KEY then
@@ -97,17 +91,12 @@ SubmitBtn.MouseButton1Click:Connect(function()
 		task.wait(1)
 		KeyScreenGui:Destroy()
 		
-		-- เริ่มรันโค้ดหลักของ B Hub หลังจากใส่คีย์ถูกต้อง
 		LoadMainScript()
 	else
 		StatusLabel.TextColor3 = Color3.fromRGB(255, 55, 85)
 		StatusLabel.Text = "คีย์ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง!"
 	end
 end)
-
--- =========================================
--- โค้ดหลักทั้งหมดของ B Hub (จะถูกเรียกเมื่อผ่าน Key)
--- =========================================
 function LoadMainScript()
 	local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
