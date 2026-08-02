@@ -72,11 +72,11 @@ StatusLabel.TextColor3 = Color3.fromRGB(255, 55, 85)
 StatusLabel.Font = Enum.Font.GothamMedium
 StatusLabel.TextSize = 11
 
-local CORRECT_KEY = "BHub2026"
+local CORRECT_KEY = "B-Hub-2026"
 
 GetKeyBtn.MouseButton1Click:Connect(function()
 	if setclipboard then
-		setclipboard "BHub2026"
+		setclipboard "B-Hub-2026"
 		StatusLabel.TextColor3 = Color3.fromRGB(0, 210, 255)
 		StatusLabel.Text = "คัดลอกลิงก์รับคีย์ลงคลิปบอร์ดแล้ว!"
 	end
